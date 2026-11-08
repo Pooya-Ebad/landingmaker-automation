@@ -1,0 +1,11 @@
+{
+ "landingPages":{"general":{"label":"کلی","url":"https://new.hamkadeh.com/dashboard/showLandings/newofcopy/62415"},"marital":{"label":"زناشویی","aliases":["مشکلات زناشویی"],"url":"https://new.hamkadeh.com/dashboard/showLandings/newofcopy/62229"},"children":{"label":"فرزند","url":"https://new.hamkadeh.com/dashboard/showLandings/newofcopy/61909"},"infidelity":{"label":"خیانت","url":"https://new.hamkadeh.com/dashboard/showLandings/newofcopy/62088"}},
+ "supervisors":{"vafadaran":{"label":"وفاداران","group":"وفاداران"},"rezaei":{"label":"رضایی","group":"مائده رضایی"},"doosti":{"label":"دوستی","group":"دوستی 1405"},"gheshmi":{"label":"قشمی","group":"قشمی"}},
+ "companies":{"adwise":{"label":"ادوایس","aliases":["ادوایس","ادویس","adwise"]},"trend":{"label":"ترند","aliases":["ترند","trend"]},"mostaghim":{"label":"مستقیم","aliases":["مستقیم","mostaghim"]},"artan":{"label":"آرتان","aliases":["آرتان","ارتان","artan"]}},
+ "cdnOrigin":"https://cdn.hamkadeh.com","landingOrigin":"https://landing.hamkadeh.com","slug":{"dictionary":{"بهار":"bahar","فرمانی":"farmani","شف":"chef","سحر":"sahar","دریا":"darya","فلورا":"flora","مینا":"mina","حیدری":"heydari"}},
+ "execution":{"transport":"http"},
+ "typeRanges":{"vafadaran":{"min":123000},"doosti":{"min":112000},"rezaei":{"min":771000},"gheshmi":{"min":7001000}},
+ "browser":{"mode":"persistent","cdpEndpoint":"http://127.0.0.1:9222","headless":false,"channel":"msedge","timeout":30000},
+ "selectors":{"title":"#EditetitleLanding","slug":"#EditeslugLanding","advanced":"label:text-is(\"آیا نیاز به لندینگ پیشرفته دارید؟\") + select","groupLabel":"انتخاب گروه :","mainPic":"#collapse2 input[name=mainPic]","secondaryMainPic":"#collapse20 input[name=mainPic]","type":"#collapse7 input[name=type]","token":"#collapse7 input[name=token]","modal":"#askUserTodo","uploadButton":"#upload-button","uploadResult":"","success":"","successText":"","extraFields":{}},
+ "parserAliases":{"date":["مورخ","تاریخ","تاریخ درخواست"],"blogger":["نام بلاگر","بلاگر"],"writer":["سناریونویس","سناریو نویس","نام سناریونویس"],"idea":["ایده"],"subject":["موضوع سناریو","موضوع"],"scenarioName":["اسم سناریو","نام سناریو"],"stories":["استوری","تعداد استوری"],"style":["سبک"],"company":["شرکت"],"category":["دسته بندی","دسته‌بندی","نوع سناریو"],"supervisor":["سرپرست","نام سرپرست"],"requestedType":["تایپ","شماره تایپ"]}
+}

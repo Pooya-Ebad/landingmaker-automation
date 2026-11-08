@@ -1,0 +1,23 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtempSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import path from 'node:path';
+import {DatabaseSync} from 'node:sqlite';
+test('slug spelling memory normalizes blogger names, persists only the name and uses the new day',async()=>{
+ process.env.DATA_DIR=mkdtempSync(path.join(tmpdir(),'hamkadeh-slug-memory-'));
+ const store=await import('../server/store');const m=await import('../server/slug-memory');const c=store.config();
+ const day=new Date('2026-11-08T09:00:00Z');
+ assert.equal(m.suggestSlug('پوریا عزیزی',c,day).slug,'pouriaazizi0817');
+ m.rememberSlug('پوریا عزیزی','pouryaazizi0817','1405/08/17');
+ assert.equal(m.suggestSlug('  پوريا   عزيزي ',c,day).slug,'pouryaazizi0817');
+ assert.equal(m.suggestSlug('پوریا عزیزی',c,new Date('2026-11-09T09:00:00Z')).slug,'pouryaazizi0818');
+ assert.equal(m.suggestSlug('پوریا نوری',c,day).remembered,false);
+ assert.throws(()=>m.rememberSlug('پوریا عزیزی','pouryaazizi0816','1405/08/17'));
+ assert.throws(()=>m.rememberSlug('پوریا عزیزی','0817','1405/08/17'));
+ assert.throws(()=>m.rememberSlug('پوریا عزیزی','invalid!0817','1405/08/17'));
+ assert.equal(m.suggestSlug('پوریا عزیزی',c,day).slug,'pouryaazizi0817');
+ const reopened=new DatabaseSync(path.join(store.dataDir,'app.sqlite'),{readOnly:true});assert.equal((reopened.prepare('SELECT latin FROM slug_memory').get() as any).latin,'pouryaazizi');reopened.close();
+ m.rememberSlug('پوریا عزیزی','puryaazizi0817','1405/08/17');assert.equal(m.suggestSlug('پوریا عزیزی',c,day).slug,'puryaazizi0817');
+ m.forgetSlug('پوريا عزیزی');assert.equal(m.suggestSlug('پوریا عزیزی',c,day).slug,'pouriaazizi0817');store.db.close();
+});

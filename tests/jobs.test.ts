@@ -1,0 +1,26 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtempSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import path from 'node:path';
+test('durable jobs: lease, idempotency, encrypted tokens, counter and uncertain recovery',async()=>{
+ process.env.DATA_DIR=mkdtempSync(path.join(tmpdir(),'hamkadeh-test-'));
+ const {db,config,nextType,job,publicJob,locked,seal,unseal,update}=await import('../server/store');
+ const {createDraft,prepare,prepareForBuild,reserve,reconcile,cancel}=await import('../server/jobs');
+ const c=config();c.tokens.vafadaran={adwise:seal('private-test-token')};db.prepare('UPDATE settings SET value=?').run(JSON.stringify(c));
+ (await import('../server/store')).setCounter('vafadaran',123000);const input={date:'1405/08/16',blogger:'بهار',category:'general',supervisor:'vafadaran',company:'adwise',type:nextType('vafadaran'),slug:'bahar0816',uploadId:'fixture',file:'private-path'};
+ const a=createDraft(input),b=createDraft(input);prepare(a.id,{});prepare(b.id,{});
+ assert.equal(unseal(job(a.id).data.secretToken),'private-test-token');
+ const exposed=JSON.stringify(publicJob(job(a.id)));assert.ok(!exposed.includes('private-test-token'));assert.ok(!exposed.includes('secretToken'));assert.ok(!exposed.includes('private-path'));
+ reserve(a.id);assert.equal(nextType('vafadaran'),input.type);assert.throws(()=>reserve(a.id));assert.throws(()=>reserve(b.id));assert.equal(locked()?.job,a.id);
+ update(a.id,'uncertain');assert.throws(()=>reserve(b.id));assert.throws(()=>reconcile(a.id,'not-created','کوتاه'));
+ reconcile(a.id,'not-created','صفحه مدیریت و اسلاگ بررسی شد؛ هیچ رکوردی وجود نداشت.');assert.equal(nextType('vafadaran'),input.type);assert.equal(locked(),undefined);assert.throws(()=>reserve(a.id));
+ reserve(b.id);update(b.id,'uncertain');reconcile(b.id,'created','لینک و رکورد سایت با تایپ و توکن سفارش تطبیق داده شد.');assert.equal(nextType('vafadaran'),input.type+1);assert.equal(job(b.id).status,'succeeded');assert.equal(locked(),undefined);assert.throws(()=>reserve(b.id));
+ const stale=createDraft({...input,type:nextType('vafadaran')});prepare(stale.id,{});c.slug.dictionary['نمونه']='sample';db.prepare('UPDATE settings SET value=?').run(JSON.stringify(c));assert.throws(()=>reserve(stale.id));
+ const review=createDraft({...input,type:nextType('vafadaran')});
+ const before=nextType('vafadaran');assert.throws(()=>prepareForBuild(review.id,{...review.data,type:123080,blogger:''}));
+ assert.equal(nextType('vafadaran'),before);assert.equal(job(review.id).status,'review');
+ prepareForBuild(review.id,{...review.data,type:123080});assert.equal(job(review.id).data.type,123080);assert.equal(nextType('vafadaran'),123080);
+ reserve(review.id);assert.throws(()=>prepareForBuild(stale.id,{...stale.data,type:123090}));assert.equal(nextType('vafadaran'),123080);cancel(review.id);
+ assert.equal(Number((db.prepare('SELECT COUNT(*) AS n FROM used_types').get() as any).n),1);db.close();
+});

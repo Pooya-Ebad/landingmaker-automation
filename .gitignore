@@ -1,0 +1,8 @@
+node_modules/
+dist/
+build/
+data/
+.npm-cache/
+.env
+*.log
+config/tokens.seed.json

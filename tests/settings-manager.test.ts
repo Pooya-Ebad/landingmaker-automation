@@ -1,0 +1,25 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtempSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import path from 'node:path';
+import {parseRequest} from '../server/core';
+test('named routing tokens preserve the original; reference edits validate every URL and keep unrelated settings',async()=>{
+ process.env.DATA_DIR=mkdtempSync(path.join(tmpdir(),'hamkadeh-settings-'));
+ const s=await import('../server/store');const m=await import('../server/settings-manager');const jobs=await import('../server/jobs');
+ const c=s.config();c.tokens.doosti={trend:s.seal('primary-fixture-token')};s.db.prepare('UPDATE settings SET value=?').run(JSON.stringify(c));
+ m.saveToken({mode:'add',supervisor:'doosti',company:'trend',label:'کمپین دوم',value:'new-fixture-token'});
+ const current=s.config(),id=Object.keys(current.tokenEntries)[0];assert.equal(s.unseal(current.tokens.doosti.trend),'primary-fixture-token');assert.equal(s.unseal(m.selectedToken(current,'doosti','trend',id)),'new-fixture-token');
+ assert.ok(!JSON.stringify(current.tokenEntries).includes('new-fixture-token'));assert.throws(()=>m.selectedToken(current,'rezaei','trend',id));
+ assert.throws(()=>m.saveToken({mode:'add',supervisor:'doosti',company:'trend',label:'کمپین دوم',value:'another-fixture-token'}));
+ m.saveToken({mode:'replace',supervisor:'doosti',company:'trend',tokenId:id,value:'replaced-fixture-token'});assert.equal(s.unseal(m.selectedToken(s.config(),'doosti','trend',id)),'replaced-fixture-token');
+ assert.equal(s.unseal(s.config().tokens.doosti.trend),'primary-fixture-token');
+ const pages={...c.landingPages,custom_reference:{label:'مرجع جدید',url:'https://new.hamkadeh.com/dashboard/showLandings/newofcopy/99999',aliases:['موضوع آزمایشی']}};
+ m.saveReferences(pages);assert.equal((parseRequest('موضوع: موضوع آزمایشی',s.config()) as any).category,'custom_reference');assert.equal(s.config().browser.channel,c.browser.channel);assert.ok(s.config().tokenEntries[id]);
+ assert.throws(()=>m.saveReferences({...pages,custom_reference:{...pages.custom_reference,url:'https://evil.test/copy/1'}}));
+ assert.throws(()=>m.saveReferences({...pages,custom_reference:{...pages.custom_reference,url:c.landingPages.general.url}}));
+ s.setCounter('doosti',112297);const d=jobs.createDraft({date:'1405/08/17',blogger:'نمونه',category:'custom_reference',supervisor:'doosti',company:'trend',tokenId:id,type:112297,slug:'example0817',uploadId:'fixture',file:'fixture'});
+ jobs.prepare(d.id,{});assert.equal(s.unseal(s.job(d.id).data.secretToken),'replaced-fixture-token');
+ jobs.reserve(d.id);assert.throws(()=>m.saveToken({mode:'add',supervisor:'doosti',company:'trend',label:'مسدود',value:'blocked-fixture-token'}));assert.throws(()=>m.saveReferences(pages));
+ s.db.close();
+});

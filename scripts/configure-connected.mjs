@@ -1,0 +1,11 @@
+import {readFileSync} from 'node:fs';
+const origin='http://127.0.0.1:3140/api';
+const csrf=(await (await fetch(origin+'/bootstrap')).json()).csrf;
+const s=await (await fetch(origin+'/settings')).json();
+if(s.locked)throw new Error('Active job: browser settings were not changed');
+const defaults=JSON.parse(readFileSync('config/defaults.json','utf8'));
+s.config.browser={...s.config.browser,mode:'cdp',cdpEndpoint:'http://127.0.0.1:9222',channel:'chrome',timeout:60000};
+for(const key of ['advanced','groupLabel','mainPic','type','token','modal'])s.config.selectors[key]=defaults.selectors[key];
+const r=await fetch(origin+'/settings',{method:'PUT',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},body:JSON.stringify({config:s.config,nextType:s.nextType,tokenUpdates:[]})});
+if(!r.ok)throw new Error((await r.json()).error);
+console.log('Saved local Chrome connection and observed form selectors. Type counter unchanged.');
