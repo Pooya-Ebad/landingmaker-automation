@@ -14,6 +14,10 @@ test('named routing tokens preserve the original; reference edits validate every
  assert.throws(()=>m.saveToken({mode:'add',supervisor:'doosti',company:'trend',label:'کمپین دوم',value:'another-fixture-token'}));
  m.saveToken({mode:'replace',supervisor:'doosti',company:'trend',tokenId:id,value:'replaced-fixture-token'});assert.equal(s.unseal(m.selectedToken(s.config(),'doosti','trend',id)),'replaced-fixture-token');
  assert.equal(s.unseal(s.config().tokens.doosti.trend),'primary-fixture-token');
+ m.saveToken({mode:'add',supervisor:'doosti',companyName:'شرکت تازه',value:'new-company-fixture'});
+ const newCompany=Object.keys(s.config().companies).find(id=>s.config().companies[id].label==='شرکت تازه')!;assert.ok(newCompany);assert.equal((parseRequest('شرکت: شرکت تازه',s.config()) as any).company,newCompany);assert.equal(s.unseal(s.config().tokens.doosti[newCompany]),'new-company-fixture');
+ assert.throws(()=>m.saveToken({mode:'add',supervisor:'doosti',companyName:'شرکت تازه',value:'duplicate-company-fixture'}));
+ m.saveToken({mode:'add',supervisor:'rezaei',companyName:'شرکت تازه',value:'other-supervisor-fixture'});assert.equal(s.unseal(s.config().tokens.rezaei[newCompany]),'other-supervisor-fixture');
  const pages={...c.landingPages,custom_reference:{label:'مرجع جدید',url:'https://new.hamkadeh.com/dashboard/showLandings/newofcopy/99999',aliases:['موضوع آزمایشی']}};
  m.saveReferences(pages);assert.equal((parseRequest('موضوع: موضوع آزمایشی',s.config()) as any).category,'custom_reference');assert.equal(s.config().browser.channel,c.browser.channel);assert.ok(s.config().tokenEntries[id]);
  assert.throws(()=>m.saveReferences({...pages,custom_reference:{...pages.custom_reference,url:'https://evil.test/copy/1'}}));

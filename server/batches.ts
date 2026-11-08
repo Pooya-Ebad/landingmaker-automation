@@ -32,9 +32,17 @@ export function stopBatch(id:string){const b=batch(id);if(b.status!=='running')r
  db.prepare('UPDATE batches SET data=? WHERE id=?').run(JSON.stringify({...b.data,stop:true}),id);
  const running=b.jobs.find((j:any)=>['running','checking','uploading','checked'].includes(j.status));if(running)cancel(running.id);return batch(id);
 }
+export function resumeBatch(id:string){return transaction(()=>{
+ const b=batch(id);if(b.status!=='stopped'||locked()||activeBatch())throw new Error('ابتدا خطای سفارش و عملیات فعال را برطرف کنید.');
+ if(b.jobs.some((j:any)=>!['ready','succeeded'].includes(j.status)))throw new Error('ابتدا سفارش متوقف‌شده را اصلاح و ساخت آن را کامل کنید.');
+ if(b.jobs.every((j:any)=>j.status==='succeeded'))throw new Error('تمام سفارش‌های صف ساخته شده‌اند.');
+ const numbers:Record<string,number>={};for(const j of b.jobs){if(j.status==='succeeded')continue;const supervisor=j.data.supervisor;const type=numbers[supervisor]??nextType(supervisor);prepare(j.id,{...j.data,type,title:''},type,true);numbers[supervisor]=type+1;}
+ db.prepare("UPDATE batches SET status='running',data=? WHERE id=?").run(JSON.stringify({...b.data,stop:false}),id);return batch(id);
+});}
 export async function runBatch(id:string,check=checkRemote,commit=commitRemote){
  try{
   for(const jobId of batch(id).data.ids){
+   if(job(jobId).status==='succeeded')continue;
    if(batch(id).data.stop)break;
    reserve(jobId);await check(jobId);
    if(batch(id).data.stop){if(job(jobId).status==='checked')cancel(jobId);break;}

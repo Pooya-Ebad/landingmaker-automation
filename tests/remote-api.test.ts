@@ -8,15 +8,15 @@ import {creationFields,parseCount,HamkadehHttp,type Fetcher} from '../server/rem
 const parameters={type:'old',token:'old',mainPic:'old-image',HamkadehOrNot:'1',subjectSelect:'',labelSelect:'',centerText:'keep-me'};
 const base={id:62088,template_id:2,is_child:0,parameters:JSON.stringify(parameters),parameter_group:{CTR_target:20,change_type:'view_change',variants:[{priority:1,view_change:100,parameters:JSON.stringify(parameters)},{priority:2,view_change:50,parameters:JSON.stringify(parameters)}]},landing_group:[]};
 const session={token:'fake-auth-only',userId:10,cdnCookies:[{name:'hfs_https',value:'fake-cookie',expires:-1},{name:'hfs_https.sig',value:'fake-signature',expires:-1}]};
-const fixture=(options:{count?:number;badReadback?:boolean;unauthorized?:boolean}={})=>{
- let creations=0,uploaded=0,record:any;const seen:string[]=[];const bytes=Buffer.from('fixture-image');
+const fixture=(options:{count?:number;badReadback?:boolean;unauthorized?:boolean;rejectCreate?:boolean;badImage?:boolean}={})=>{
+ let creations=0,uploaded=0,record:any;const seen:string[]=[];const bytes=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jK1cAAAAASUVORK5CYII=','base64');
  const send:Fetcher=async(url,init={})=>{
   const u=new URL(url);seen.push(init.method+' '+u.pathname);const json=(data:any,status=200)=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json'}});
   if(options.unauthorized)return json({status:false},401);
   if(u.origin==='https://cdn.hamkadeh.com'){
    assert.ok((init.headers as any).Cookie.includes('fake-cookie'));
    if(init.method==='PUT'){uploaded++;return json({uri:'/returned%20name%20(9).png'});}
-   assert.equal(u.pathname,'/returned%20name%20(9).png');return new Response(new Uint8Array(bytes),{headers:{'Content-Type':'image/png'}});
+   assert.equal(u.pathname,'/returned%20name%20(9).png');return new Response(new Uint8Array(options.badImage?Buffer.from('changed image'):bytes),{headers:{'Content-Type':'image/png'}});
   }
   assert.equal(u.origin,'https://landing.hamkadeh.com');assert.equal((init.headers as any).Authorization,'Bearer fake-auth-only');
   if(u.pathname==='/api/profile/current-user')return json({status:true,data:{id:10}});
@@ -25,6 +25,7 @@ const fixture=(options:{count?:number;badReadback?:boolean;unauthorized?:boolean
   if(u.pathname==='/api/landing/get-token-type-count')return json({status:true,data:{count:options.count??0}});
   if(u.pathname==='/api/landing/create'){
    creations++;assert.ok(init.body instanceof FormData);const form=init.body as FormData;
+   if(options.rejectCreate)return json({status:false,message:'اسلاگ قبلاً استفاده شده است. '+form.get('token'),errors:{slug:['یک اسلاگ دیگر انتخاب کنید.']}},422);
    record={id:9001,title:form.get('title'),slug:options.badReadback?'wrong':form.get('slug'),parameters:form.get('parameters')};return json({status:true,data:{id:9001}});
   }
   if(u.pathname==='/api/landing/show/9001')return json({status:true,data:record});
@@ -60,7 +61,15 @@ test('direct API jobs: check-only cannot create; explicit commit verifies result
  await assert.rejects(()=>remote.commitRemote(j.id,mock.send));assert.equal(mock.creations,1);assert.equal(store.job(j.id).status,'succeeded');
  const blocked=draft();jobs.prepare(blocked.id,{});jobs.reserve(blocked.id);const duplicate=fixture({count:1});await remote.checkRemote(blocked.id,duplicate.send);assert.equal(store.job(blocked.id).status,'duplicate');assert.equal(duplicate.uploaded,0);assert.equal(duplicate.creations,0);assert.equal(store.nextType('doosti'),before+1);
  const pending=draft();jobs.prepare(pending.id,{});jobs.reserve(pending.id);await remote.checkRemote(pending.id,mock.send);jobs.cancel(pending.id);assert.equal(store.locked(),undefined);assert.equal(mock.creations,1);
+ const rejected=draft();jobs.prepare(rejected.id,{});jobs.reserve(rejected.id);const reject=fixture({rejectCreate:true});await remote.checkRemote(rejected.id,reject.send);remote.reserveRemoteCommit(rejected.id);await remote.commitRemote(rejected.id,reject.send);
+ assert.equal(store.job(rejected.id).status,'failed');assert.equal(store.locked(),undefined);assert.equal(store.nextType('doosti'),before+1);assert.equal(store.job(rejected.id).result.siteError.httpStatus,422);assert.ok(store.job(rejected.id).error.includes('اسلاگ قبلاً استفاده شده است.'));assert.ok(!JSON.stringify(store.publicJob(store.job(rejected.id))).includes('private-fixture-token'));
+ jobs.prepareRetry(rejected.id,{...store.publicJob(store.job(rejected.id)).data,slug:'corrected0817'});jobs.reserve(rejected.id);
+ const retry=fixture();await remote.checkRemote(rejected.id,retry.send);assert.equal(retry.uploaded,0);assert.equal(store.job(rejected.id).result.imageReused,true);assert.equal(store.job(rejected.id).data.slug,'corrected0817');assert.equal(retry.creations,0);assert.equal((store.db.prepare('SELECT COUNT(*) AS n FROM job_attempts WHERE job=?').get(rejected.id) as any).n,1);jobs.cancel(rejected.id);
+ store.db.prepare('DELETE FROM job_images WHERE job=?').run(rejected.id);
+ jobs.prepareRetry(rejected.id,store.publicJob(store.job(rejected.id)).data);jobs.reserve(rejected.id);const changed=fixture({badImage:true});await remote.checkRemote(rejected.id,changed.send);assert.equal(store.job(rejected.id).status,'failed');assert.equal(changed.uploaded,0);assert.equal(store.job(rejected.id).result.uploadDiagnostic.code,'CDN_IMAGE_HASH');
+ jobs.prepareRetry(rejected.id,store.publicJob(store.job(rejected.id)).data);jobs.reserve(rejected.id);const legacy=fixture();await remote.checkRemote(rejected.id,legacy.send);assert.equal(store.job(rejected.id).status,'checked');assert.equal(legacy.uploaded,0);assert.equal(store.job(rejected.id).result.imageReused,true);jobs.cancel(rejected.id);
  const uncertain=draft();jobs.prepare(uncertain.id,{});jobs.reserve(uncertain.id);const bad=fixture({badReadback:true});await remote.checkRemote(uncertain.id,bad.send);remote.reserveRemoteCommit(uncertain.id);await remote.commitRemote(uncertain.id,bad.send);assert.equal(store.job(uncertain.id).status,'uncertain');assert.equal(store.nextType('doosti'),before+1);assert.equal(store.locked()?.job,uncertain.id);
+ assert.throws(()=>jobs.prepareRetry(uncertain.id,{...store.publicJob(store.job(uncertain.id)).data,slug:'unsafe0817'}));assert.equal(store.job(uncertain.id).status,'uncertain');
  store.db.close();
 });
 test('expired or unauthorized API session fails without submitting creation',async()=>{

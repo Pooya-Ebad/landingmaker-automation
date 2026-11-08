@@ -6,12 +6,12 @@ import path from 'node:path';
 import {z} from 'zod';
 import {config,db,nextType,dataDir,job,publicJob,locked,seal,unseal,counters,setCounter} from './store';
 import {parseRequest,makeCurrentSlug,todayJalali,validateConfig} from './core';
-import {createDraft,prepare,prepareForBuild,reserve,execute,reconcile,cancel} from './jobs';
+import {createDraft,prepare,prepareForBuild,prepareRetry,reserve,execute,reconcile,cancel} from './jobs';
 import {browser,closeBrowser} from './browser';
 import {remoteSessionStatus,importChromeSession,loadRemoteSession} from './remote-session';
 import {HamkadehHttp} from './remote-api';
 import {reserveRemoteCommit,commitRemote} from './remote-jobs';
-import {activeBatch,batch,startBatch,runBatch,stopBatch} from './batches';
+import {activeBatch,batch,startBatch,runBatch,stopBatch,resumeBatch} from './batches';
 import {suggestSlug,rememberSlug,forgetSlug} from './slug-memory';
 import {selectedToken,saveToken,saveReferences} from './settings-manager';
 import {providers,type Provider} from './providers';
@@ -30,7 +30,7 @@ app.use('/api',(req,res,next)=>{
 });
 const wrap=(fn:any)=>(req:any,res:any,next:any)=>Promise.resolve().then(()=>fn(req,res)).catch(next);
 app.use('/api',(req,res,next)=>{
- if(activeBatch()&&((req.method==='PUT'&&req.path==='/settings')||req.path.startsWith('/settings/')||['/landing/build','/landing/approve','/connection/import'].includes(req.path)||/\/landing\/jobs\/[^/]+\/(commit|reconcile|cancel)$/.test(req.path)))return res.status(409).json({error:'صف گروهی فعال است؛ ابتدا آن را متوقف کنید.'});next();
+ if(activeBatch()&&((req.method==='PUT'&&req.path==='/settings')||req.path.startsWith('/settings/')||['/landing/build','/landing/approve','/connection/import'].includes(req.path)||/\/landing\/jobs\/[^/]+\/(commit|reconcile|cancel|retry)$/.test(req.path)))return res.status(409).json({error:'صف گروهی فعال است؛ ابتدا آن را متوقف کنید.'});next();
 });
 app.get('/api/landing/batches/active',(_req,res)=>{const b=activeBatch();res.json(b?batch(b.id):null);});
 app.get('/api/landing/batches/:id',wrap((req:any,res:any)=>res.json(batch(req.params.id))));
@@ -39,6 +39,7 @@ app.post('/api/landing/batches',wrap((req:any,res:any)=>{
  const b=startBatch(input.items,input.starts,input.confirm);void runBatch(b.id);res.status(202).json(b);
 }));
 app.post('/api/landing/batches/:id/stop',wrap((req:any,res:any)=>res.json(stopBatch(req.params.id))));
+app.post('/api/landing/batches/:id/resume',wrap((req:any,res:any)=>{if(req.body.confirm!==true)throw new Error('Explicit confirmation required');const b=resumeBatch(req.params.id);void runBatch(b.id);res.status(202).json(b);}));
 app.get('/api/bootstrap',(_req,res)=>res.json({csrf}));
 function settings(){const c=config();const tokenOptions:any=Object.fromEntries(Object.keys(c.supervisors).map(s=>[s,Object.keys(c.tokens[s]||{}).map(company=>({company,id:'',label:'توکن اصلی',masked:'•••••••••••••'}))]));for(const [id,t] of Object.entries(c.tokenEntries||{}) as any){tokenOptions[t.supervisor]??=[];tokenOptions[t.supervisor].push({id,company:t.company,label:t.label,masked:'•••••••••••••'});}const {tokens,tokenEntries,...safe}=c;return {config:safe,tokenOptions,counters:counters(),locked:locked()||null};}
 app.get('/api/settings',(_req,res)=>res.json(settings()));
@@ -71,7 +72,7 @@ app.post('/api/uploads',upload.single('image'),wrap((req:any,res:any)=>{
 app.post('/api/landing/preview',wrap((req:any,res:any)=>{
  const input=z.object({raw:z.string().min(1).max(30000),uploadId:z.string().uuid(),supervisor:z.string().optional()}).parse(req.body);
  const file=(db.prepare('SELECT path FROM uploads WHERE id=?').get(input.uploadId) as any)?.path;if(!file||!existsSync(file))throw new Error('تصویر معتبر بارگذاری کنید.');
- const c=config();const parsed:any=parseRequest(input.raw,c);const supervisor=input.supervisor||parsed.supervisor||'';const d:any={...parsed,raw:input.raw,uploadId:input.uploadId,file,supervisor,type:nextType(supervisor),...suggestSlug(parsed.blogger||'',c)};
+ const c=config();const parsed:any=parseRequest(input.raw,c);const supervisor=input.supervisor||parsed.supervisor||'';const d:any={...parsed,raw:input.raw,uploadId:input.uploadId,file,supervisor,builder:'hamkadeh',type:nextType(supervisor),...suggestSlug(parsed.blogger||'',c)};
  res.json(publicJob(createDraft(d)));
 }));
 app.post('/api/landing/slug',wrap((req:any,res:any)=>res.json(suggestSlug(String(req.body.blogger||''),config()))));
@@ -79,6 +80,7 @@ app.post('/api/landing/slug-memory',wrap((req:any,res:any)=>{const d=z.object({b
 app.delete('/api/landing/slug-memory',wrap((req:any,res:any)=>res.json(forgetSlug(z.string().min(1).max(200).parse(req.body.blogger)))));
 app.post('/api/landing/approve',wrap((req:any,res:any)=>res.json(publicJob(prepare(req.body.id,req.body.data)))));
 app.post('/api/landing/build',wrap((req:any,res:any)=>{if(req.body.data)prepareForBuild(req.body.id,req.body.data);const j=reserve(req.body.id);void execute(j.id);res.status(202).json(publicJob(job(j.id)));}));
+app.post('/api/landing/jobs/:id/retry',wrap((req:any,res:any)=>{prepareRetry(req.params.id,req.body.data||{});const j=reserve(req.params.id);void execute(j.id);res.status(202).json(publicJob(job(j.id)));}));
 app.post('/api/landing/jobs/:id/commit',wrap((req:any,res:any)=>{if(req.body.confirm!==true)throw new Error('تأیید صریح ثبت نهایی لازم است.');const j=reserveRemoteCommit(req.params.id);void commitRemote(j.id);res.status(202).json(publicJob(job(j.id)));}));
 app.get('/api/connection',(_req,res)=>res.json({...remoteSessionStatus(),providers:{hamkadeh:remoteSessionStatus(),moshavere:remoteSessionStatus('moshavere')}}));
 app.post('/api/connection/import',wrap(async(req:any,res:any)=>{

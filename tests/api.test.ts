@@ -36,8 +36,14 @@ test('HTTP API: upload, preview, approval, safe failure, masking, CSRF and resta
   const additional=addedToken.body.tokenOptions.vafadaran.find((t:any)=>t.label==='توکن دوم');assert.ok(additional.id);
   assert.equal((await api('/tokens/selected',{supervisor:'vafadaran',company:'adwise',tokenId:additional.id,display:true})).body.value,'additional_private_token');
   assert.equal((await api('/tokens/selected',{supervisor:'rezaei',company:'adwise',tokenId:additional.id,display:true})).status,400);
-  const refs={...s.body.config.landingPages,custom_test:{label:'مرجع تست',url:'https://new.hamkadeh.com/dashboard/showLandings/newofcopy/99999',aliases:['موضوع تست']}};
+  const createdCompany=await api('/settings/tokens',{mode:'add',supervisor:'doosti',companyName:'شرکت آزمایش API',value:'company_private_token'});assert.equal(createdCompany.status,200);
+  const companyId=Object.keys(createdCompany.body.config.companies).find(id=>createdCompany.body.config.companies[id].label==='شرکت آزمایش API')!;assert.ok(companyId);assert.ok(!JSON.stringify(createdCompany.body).includes('company_private_token'));
+  assert.equal((await api('/tokens/selected',{supervisor:'doosti',company:companyId,display:true})).body.value,'company_private_token');
+  assert.equal((await api('/connection/import',{confirm:true,provider:'unknown'})).status,400);
+  const refs:any={...s.body.config.landingPages,custom_test:{label:'مرجع تست',url:'https://new.hamkadeh.com/dashboard/showLandings/newofcopy/99999',aliases:['موضوع تست']}};
+  refs.general.moshavereUrl='https://new.moshavere.me/dashboard/showLandings/newofcopy/13550';
   assert.equal((await api('/settings/references',{landingPages:refs},'PUT')).status,200);assert.equal((await api('/settings')).body.config.landingPages.custom_test.label,'مرجع تست');
+  assert.equal((await api('/settings')).body.config.landingPages.general.moshavereUrl,refs.general.moshavereUrl);
   const reviewData=auto.body.data;
   assert.equal((await api('/landing/slug-memory',{blogger:'پوریا عزیزی',slug:'pouryaazizi0817',slugDate:'1405/08/17'})).status,200);
   const learned=await api('/landing/slug',{blogger:'پوريا عزیزی'});assert.equal(learned.body.slug,'pouryaazizi'+todayJalali().slice(5).replace('/',''));assert.equal(learned.body.remembered,true);

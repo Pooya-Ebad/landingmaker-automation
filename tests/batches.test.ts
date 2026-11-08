@@ -41,5 +41,8 @@ test('batch preflight is atomic; sequential successes consume types; failure/unc
  await b.runBatch(mixed.id,check,commit);assert.equal(b.batch(mixed.id).status,'succeeded');
  assert.equal(s.nextType('doosti'),123102);assert.equal(s.nextType('vafadaran'),123101);
  assert.equal((s.db.prepare('SELECT COUNT(*) AS n FROM used_types WHERE type=123100').get() as any).n,2);
+ const resumeItems=[draft(),draft()];const resumable=b.startBatch(resumeItems.map(j=>({id:j.id,data:{}})),{doosti:s.nextType('doosti')},true);b.stopBatch(resumable.id);await b.runBatch(resumable.id,check,commit);
+ jobs.prepareForBuild(resumeItems[0].id,{...s.job(resumeItems[0].id).data,type:123150});jobs.reserve(resumeItems[0].id);await check(resumeItems[0].id);(await import('../server/remote-jobs')).reserveRemoteCommit(resumeItems[0].id);await commit(resumeItems[0].id);
+ const eventCount=events.length;b.resumeBatch(resumable.id);assert.equal(s.job(resumeItems[1].id).data.type,123151);await b.runBatch(resumable.id,check,commit);assert.equal(events.length,eventCount+2);assert.equal(b.batch(resumable.id).status,'succeeded');
  s.db.close();
 });

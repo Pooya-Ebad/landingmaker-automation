@@ -13,6 +13,14 @@ export function prepareForBuild(id:string,changes:any){return transaction(()=>{
  const type=Number(changes.type);setCounter(changes.supervisor,type);
  return prepare(id,{...changes,type},type,true);
 });}
+db.exec('CREATE TABLE IF NOT EXISTS job_attempts(id INTEGER PRIMARY KEY,job TEXT NOT NULL,created TEXT NOT NULL,status TEXT NOT NULL,error TEXT,result TEXT,slug TEXT NOT NULL)');
+export function prepareRetry(id:string,changes:any){return transaction(()=>{
+ const j=job(id);if(locked())throw new Error('ابتدا نتیجه عملیات فعال یا نامشخص را بررسی کنید.');
+ if(!['failed','duplicate','canceled'].includes(j.status))throw new Error('این سفارش برای تلاش مجدد امن آماده نیست.');
+ db.prepare('INSERT INTO job_attempts(job,created,status,error,result,slug) VALUES(?,?,?,?,?,?)').run(id,new Date().toISOString(),j.status,j.error,JSON.stringify(j.result),j.data.slug||'');
+ const data={...j.data,cancelRequested:false};db.prepare("UPDATE jobs SET status='review',data=? WHERE id=?").run(JSON.stringify(data),id);
+ const type=Number(changes.type);setCounter(changes.supervisor,type);return prepare(id,{...changes,type},type,true);
+});}
 export function prepare(id:string,changes:any,expectedType?:number,inTransaction=false){const work=()=>{
  const j=job(id);if(!['review','ready'].includes(j.status))throw new Error('این سفارش قابل ویرایش یا اجرای دوباره نیست.');
  const c=config();validateConfig(c);
@@ -26,6 +34,7 @@ export function prepare(id:string,changes:any,expectedType?:number,inTransaction
  if(db.prepare('SELECT type FROM used_types WHERE supervisor=? AND type=?').get(d.supervisor,d.type))throw new Error('تایپ قبلاً برای این سرپرست مصرف شده است.');
  d.title=changes.title?.trim()||title(d,c);d.tokenCompany=tokenCompany;d.secretToken=token;d.configVersion=createHash('sha256').update(JSON.stringify(c)).digest('hex');
  d.builder??='hamkadeh';target(d,c);
+ if(d.builder==='moshavere'&&c.execution?.transport!=='http')throw new Error('مشاوره به اجرای مستقیم API نیاز دارد.');
  db.prepare("UPDATE jobs SET data=?,status='ready',updated=? WHERE id=?").run(JSON.stringify(d),new Date().toISOString(),id);return job(id);
 };return inTransaction?work():transaction(work);}
 export function reserve(id:string){return transaction(()=>{const j=job(id);if(j.status!=='ready')throw new Error('سفارش باید آماده ساخت باشد و قبلاً اجرا نشده باشد.');if(locked())throw new Error('عملیات دیگری در جریان است یا نتیجه نامشخص دارد.');if(j.data.configVersion!==createHash('sha256').update(JSON.stringify(config())).digest('hex'))throw new Error('تنظیمات تغییر کرده است؛ اطلاعات را دوباره تأیید کنید.');if(j.data.type!==nextType(j.data.supervisor))throw new Error('شماره تایپ تغییر کرده؛ پیش‌نمایش جدید بگیرید.');db.prepare('INSERT INTO lease VALUES(1,?)').run(id);update(id,'running');return j;});}

@@ -10,8 +10,9 @@ export function saveToken(input:{mode:'add'|'replace';supervisor:string;company?
  if(locked())throw new Error('ابتدا عملیات فعال را تمام کنید.');
  const c=config();const {supervisor,value,mode,tokenId}=input;let company=input.company||'';
  if(mode==='add'&&input.companyName){const name=normalize(input.companyName);if(!name||name.length>80)throw new Error('نام شرکت جدید معتبر نیست.');
-  if(Object.entries(c.companies).some(([id,v]:any)=>[id,v.label,...v.aliases||[]].some((s:string)=>normalize(s).toLowerCase()===name.toLowerCase())))throw new Error('این شرکت قبلاً ثبت شده است؛ از جایگزینی توکن استفاده کنید.');
-  company='company_'+randomUUID().replaceAll('-','');c.companies[company]={label:name,aliases:[name]};
+  const existing=Object.entries(c.companies).find(([id,v]:any)=>[id,v.label,...v.aliases||[]].some((s:string)=>normalize(s).toLowerCase()===name.toLowerCase()));
+  if(existing){company=existing[0];if(c.tokens[supervisor]?.[company])throw new Error('توکن این شرکت برای این سرپرست وجود دارد؛ از جایگزینی استفاده کنید.');}
+  else{company='company_'+randomUUID().replaceAll('-','');c.companies[company]={label:name,aliases:[name]};}
  }
  if(!c.supervisors[supervisor]||!c.companies[company]||!/^[a-zA-Z0-9_-]{8,128}$/.test(value))throw new Error('سرپرست، شرکت یا توکن معتبر نیست.');
  if(mode==='replace'){
