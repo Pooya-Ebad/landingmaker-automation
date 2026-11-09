@@ -1,5 +1,5 @@
 import {randomUUID,createHash} from 'node:crypto';
-import {db,config,nextType,job,transaction,locked,update,unseal,seal,consumeType,setCounter} from './store';
+import {db,config,nextType,job,transaction,locked,update,unseal,seal,consumeType,setCounter,typeStatus,typeReuseApproved} from './store';
 import {browser} from './browser';
 import {HamkadehUpload,HamkadehBuilder,BuildError,type ImageUploadAdapter,type LandingBuilderAdapter} from './adapters';
 import {validateConfig,validatePage} from './core';
@@ -31,7 +31,10 @@ export function prepare(id:string,changes:any,expectedType?:number,inTransaction
  if(!d.blogger?.trim()||!d.date?.trim()||!d.uploadId||!/^[a-z0-9]+$/.test(d.slug||''))throw new Error('نام بلاگر، تاریخ، تصویر و اسلاگ لاتین معتبر لازم است.');
  const expected=expectedType??nextType(d.supervisor);if(!expected)throw new Error('تایپ شروع این سرپرست را در تنظیمات وارد کنید.');
  d.type=Number(d.type);if(!Number.isSafeInteger(d.type)||d.type!==expected)throw new Error('تایپ این سرپرست تغییر کرده است؛ پیش‌نمایش را به‌روز کنید.');
- if(db.prepare('SELECT type FROM used_types WHERE supervisor=? AND type=?').get(d.supervisor,d.type))throw new Error('تایپ قبلاً برای این سرپرست مصرف شده است.');
+ const used=typeStatus(d.supervisor,d.type).used;
+ const confirmed=changes.confirmTypeReuse===true||(changes.confirmTypeReuse===undefined&&typeReuseApproved(d));
+ if(used&&!confirmed)throw new Error('این تایپ قبلاً استفاده شده است؛ برای ادامه، هشدار استفاده مجدد را تأیید کنید.');
+ d.typeReuseApproval=used&&confirmed?{supervisor:d.supervisor,type:d.type,confirmedAt:new Date().toISOString()}:null;
  d.title=changes.title?.trim()||title(d,c);d.tokenCompany=tokenCompany;d.secretToken=token;d.configVersion=createHash('sha256').update(JSON.stringify(c)).digest('hex');
  d.builder??='hamkadeh';target(d,c);
  if(d.builder==='moshavere'&&c.execution?.transport!=='http')throw new Error('مشاوره به اجرای مستقیم API نیاز دارد.');

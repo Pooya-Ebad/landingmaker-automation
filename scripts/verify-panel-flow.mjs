@@ -4,6 +4,7 @@ const defaults=JSON.parse(readFileSync('config/defaults.json','utf8'));
 defaults.landingPages.infidelity.moshavereUrl='https://new.moshavere.me/dashboard/showLandings/newofcopy/13550';
 const b=await chromium.launch({headless:true,channel:'msedge'});
 const retryMode=process.argv.includes('--retry-flow');
+const reuseTypeMode=process.argv.includes('--reuse-type');
 const siteErrorMode=process.argv.includes('--site-error')||retryMode;
 try{
  const ctx=await b.newContext({serviceWorkers:'block'});let phase='review',commits=0,learned=null,uploads=0,rechecks=0;const errors=[];
@@ -16,6 +17,7 @@ try{
   if(!u.pathname.startsWith('/api/'))return route.continue();
   const body=()=>JSON.parse(route.request().postData()||'{}');let reply;
   switch(u.pathname){
+   case '/api/landing/type-status':reply={used:reuseTypeMode&&body().type===112310,count:reuseTypeMode&&body().type===112310?1:0};break;
    case '/api/bootstrap':reply={csrf:'test-only'};break;
    case '/api/landing/batches/active':reply=null;break;
    case '/api/settings':reply={config:defaults,counters:{doosti:112297},tokenOptions:{doosti:[{id:'',label:'توکن اصلی',company:'trend',masked:'•••••••••••••'},{id:'fixture-alt',label:'کمپین دوم',company:'trend',masked:'••••'}]},locked:['checked','uploading','checking'].includes(phase)?{job:'ui-fixture'}:null};break;
@@ -26,7 +28,7 @@ try{
    case '/api/landing/slug':reply={slug:data.slug,slugDate:'1405/08/17'};break;
    case '/api/landing/slug-memory':if(route.request().method()==='DELETE'){learned=null;reply={remembered:false};}else{if(body().blogger!==data.blogger||body().slugDate!=='1405/08/17')throw new Error('Wrong blogger/date memory');learned=body().slug;reply={remembered:true};}break;
    case '/api/landing/approve':phase='ready';reply=current();break;
-   case '/api/landing/build':if(body().data.type!==112310||body().data.tokenId!=='fixture-alt'||body().data.builder!=='moshavere')throw new Error('Review type/token/provider was not submitted');Object.assign(data,body().data);phase='checked';reply=current();break;
+   case '/api/landing/build':if(body().data.type!==112310||body().data.tokenId!=='fixture-alt'||body().data.builder!=='moshavere'||reuseTypeMode&&body().data.confirmTypeReuse!==true)throw new Error('Review type/token/provider/reuse approval was not submitted');Object.assign(data,body().data);phase='checked';reply=current();break;
    case '/api/landing/jobs/ui-fixture':reply=current();break;
    case '/api/landing/jobs/ui-fixture/retry':if(body().data.slug!=='correctedmina0817')throw new Error('Corrected slug missing');Object.assign(data,body().data);rechecks++;phase='checked';reply=current();break;
    case '/api/landing/jobs/ui-fixture/commit':if(body().confirm!==true)throw new Error('Explicit confirmation missing');phase=siteErrorMode&&commits===0?(retryMode?'failed':'uncertain'):'succeeded';commits++;reply=current();break;
@@ -46,6 +48,7 @@ try{
  await p.getByRole('combobox',{name:'انتخاب توکن',exact:true}).selectOption('fixture-alt');await p.locator('input[value="fixture-alternative-token"]').waitFor();
  await p.getByLabel('اسلاگ نهایی (قابل ویرایش)',{exact:true}).fill('minahaydari0817');
  await p.getByLabel('تایپ',{exact:true}).fill('112310');
+ if(reuseTypeMode){const approval=p.getByLabel('این تایپ قبلاً استفاده شده؛ استفاده دوباره از همین شماره را تأیید می‌کنم.',{exact:true});await approval.check();await p.getByLabel('تایپ',{exact:true}).fill('112311');await p.getByLabel('تایپ',{exact:true}).fill('112310');if(await approval.isChecked())throw new Error('Reuse approval survived a number change');await approval.check();}
  await p.getByText('املای نام برای درخواست‌های بعدی ذخیره شد.',{exact:true}).waitFor();if(learned!=='minahaydari0817')throw new Error('Spelling was not learned');
  await p.getByRole('button',{name:'حذف املای ذخیره‌شده',exact:true}).click();await p.getByText('املای این بلاگر از حافظه حذف شد؛ اسلاگ فعلی تغییر نکرد.',{exact:true}).waitFor();if(learned!==null)throw new Error('Spelling was not forgotten');
  if(await p.getByLabel('اسلاگ نهایی (قابل ویرایش)',{exact:true}).inputValue()!=='minahaydari0817')throw new Error('Manual slug was overwritten');

@@ -16,6 +16,7 @@ test('HTTP API: upload, preview, approval, safe failure, masking, CSRF and resta
   const cross=await fetch(origin+'/api/settings',{headers:{Origin:'https://other.test'}});assert.equal(cross.status,403);
   assert.equal((await api('/connection')).body.configured,false);assert.equal((await api('/connection/import',{})).status,400);assert.equal((await api('/landing/jobs/unused/commit',{})).status,400);
   const s=await api('/settings');assert.equal(s.status,200);assert.ok(!('tokens' in s.body.config));assert.equal(s.body.tokenOptions.vafadaran[0].masked,'•••••••••••••');
+  assert.deepEqual((await api('/landing/type-status',{supervisor:'vafadaran',type:123000})).body,{used:false,count:0});
   assert.equal((await api('/settings',{config:s.body.config,counters:{vafadaran:123000,rezaei:771111}},'PUT')).status,200);
   const form=new FormData();form.append('image',new Blob([Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jK1cAAAAASUVORK5CYII=','base64')],{type:'image/png'}),'banner.png');
   const upload=await (await fetch(origin+'/api/uploads',{method:'POST',headers:{'X-CSRF-Token':csrf},body:form})).json();assert.ok(upload.id);

@@ -4,7 +4,7 @@ import {randomBytes,randomUUID,timingSafeEqual} from 'node:crypto';
 import {readFileSync,unlinkSync,existsSync} from 'node:fs';
 import path from 'node:path';
 import {z} from 'zod';
-import {config,db,nextType,dataDir,job,publicJob,locked,seal,unseal,counters,setCounter} from './store';
+import {config,db,nextType,dataDir,job,publicJob,locked,seal,unseal,counters,setCounter,typeStatus} from './store';
 import {parseRequest,makeCurrentSlug,todayJalali,validateConfig} from './core';
 import {createDraft,prepare,prepareForBuild,prepareRetry,reserve,execute,reconcile,cancel} from './jobs';
 import {browser,closeBrowser} from './browser';
@@ -76,6 +76,7 @@ app.post('/api/landing/preview',wrap((req:any,res:any)=>{
  res.json(publicJob(createDraft(d)));
 }));
 app.post('/api/landing/slug',wrap((req:any,res:any)=>res.json(suggestSlug(String(req.body.blogger||''),config()))));
+app.post('/api/landing/type-status',wrap((req:any,res:any)=>{const d=z.object({supervisor:z.string(),type:z.number().int().positive().max(999999999)}).parse(req.body);if(!config().supervisors[d.supervisor])throw new Error('سرپرست معتبر نیست.');res.json(typeStatus(d.supervisor,d.type));}));
 app.post('/api/landing/slug-memory',wrap((req:any,res:any)=>{const d=z.object({blogger:z.string().min(1).max(200),slug:z.string().max(210),slugDate:z.string().max(20)}).parse(req.body);res.json(rememberSlug(d.blogger,d.slug,d.slugDate));}));
 app.delete('/api/landing/slug-memory',wrap((req:any,res:any)=>res.json(forgetSlug(z.string().min(1).max(200).parse(req.body.blogger)))));
 app.post('/api/landing/approve',wrap((req:any,res:any)=>res.json(publicJob(prepare(req.body.id,req.body.data)))));

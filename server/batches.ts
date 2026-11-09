@@ -44,6 +44,7 @@ export async function runBatch(id:string,check=checkRemote,commit=commitRemote){
   for(const jobId of batch(id).data.ids){
    if(job(jobId).status==='succeeded')continue;
    if(batch(id).data.stop)break;
+   transaction(()=>{if(locked())throw new Error('عملیات دیگری فعال است.');const j=job(jobId);if(j.status!=='ready')throw new Error('سفارش آماده اجرا نیست.');setCounter(j.data.supervisor,j.data.type);});
    reserve(jobId);await check(jobId);
    if(batch(id).data.stop){if(job(jobId).status==='checked')cancel(jobId);break;}
    if(job(jobId).status!=='checked')break;

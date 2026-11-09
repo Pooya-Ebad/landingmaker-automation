@@ -54,16 +54,21 @@ if(!(db.prepare('PRAGMA table_info(used_types)').all() as any[]).some(c=>c.name=
 }
 export const nextType=(supervisor:string)=>Number((db.prepare('SELECT next FROM supervisor_counters WHERE supervisor=?').get(supervisor) as any)?.next||0);
 export const counters=()=>Object.fromEntries(db.prepare('SELECT supervisor,next FROM supervisor_counters').all().map((r:any)=>[r.supervisor,Number(r.next)]));
+db.exec(`CREATE TABLE IF NOT EXISTS type_usages(job TEXT PRIMARY KEY,supervisor TEXT NOT NULL,type INTEGER NOT NULL,created TEXT NOT NULL);
+ INSERT OR IGNORE INTO type_usages SELECT u.job,u.supervisor,u.type,COALESCE(j.updated,datetime('now')) FROM used_types u LEFT JOIN jobs j ON j.id=u.job;`);
+export function typeStatus(supervisor:string,type:number){const used=!!db.prepare('SELECT 1 FROM used_types WHERE supervisor=? AND type=?').get(supervisor,type);const count=Number((db.prepare('SELECT COUNT(*) AS n FROM type_usages WHERE supervisor=? AND type=?').get(supervisor,type) as any).n);return {used,count};}
+export function typeReuseApproved(d:any){return d.typeReuseApproval?.supervisor===d.supervisor&&d.typeReuseApproval?.type===Number(d.type);}
 export function setCounter(supervisor:string,value:number){
  if(!config().supervisors[supervisor]||!Number.isSafeInteger(value)||value<1||value>999999999)throw new Error('سرپرست یا تایپ شروع نامعتبر است.');
  if(value<(config().typeRanges?.[supervisor]?.min||1))throw new Error('تایپ شروع با بازه این سرپرست سازگار نیست.');
- const max=db.prepare('SELECT MAX(type) AS max FROM used_types WHERE supervisor=?').get(supervisor) as any;
- if(max.max&&value<=max.max)throw new Error('تایپ باید از شماره‌های مصرف‌شده همین سرپرست بیشتر باشد.');
  db.prepare('INSERT INTO supervisor_counters VALUES(?,?) ON CONFLICT(supervisor) DO UPDATE SET next=excluded.next').run(supervisor,value);
 }
 export function consumeType(d:any,id:string){
- db.prepare('INSERT INTO used_types VALUES(?,?,?)').run(d.supervisor,d.type,id);
- db.prepare('UPDATE supervisor_counters SET next=? WHERE supervisor=?').run(d.type+1,d.supervisor);
+ if(typeStatus(d.supervisor,d.type).used&&!typeReuseApproved(d))throw new Error('استفاده دوباره از تایپ به تأیید شما نیاز دارد.');
+ db.prepare('INSERT INTO type_usages VALUES(?,?,?,?)').run(id,d.supervisor,d.type,new Date().toISOString());
+ db.prepare('INSERT OR IGNORE INTO used_types VALUES(?,?,?)').run(d.supervisor,d.type,id);
+ const max=Number((db.prepare('SELECT MAX(type) AS n FROM used_types WHERE supervisor=?').get(d.supervisor) as any).n);
+ db.prepare('UPDATE supervisor_counters SET next=? WHERE supervisor=?').run(Math.max(d.type+1,max+1),d.supervisor);
 }
 export const locked=()=>db.prepare('SELECT job FROM lease WHERE id=1').get() as {job:string}|undefined;
 export function transaction<T>(fn:()=>T):T {db.exec('BEGIN IMMEDIATE');try{const r=fn();db.exec('COMMIT');return r;}catch(e){db.exec('ROLLBACK');throw e;}}

@@ -1,0 +1,25 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtempSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import path from 'node:path';
+test('used types require explicit scoped approval, preserve every usage, and work in sequential batches',async()=>{
+ process.env.DATA_DIR=mkdtempSync(path.join(tmpdir(),'hamkadeh-type-reuse-'));
+ const s=await import('../server/store');const jobs=await import('../server/jobs');const b=await import('../server/batches');
+ const c=s.config();c.tokens.doosti={trend:s.seal('trend-fixture-token'),adwise:s.seal('adwise-fixture-token')};s.db.prepare('UPDATE settings SET value=?').run(JSON.stringify(c));
+ let n=0;const draft=(type:number,company='trend')=>jobs.createDraft({date:'1405/08/18',blogger:'نمونه',category:'infidelity',supervisor:'doosti',company,type,slug:'sample'+(++n)+'0818',uploadId:'fixture',file:'fixture'});
+ const complete=(id:string)=>{jobs.reserve(id);s.update(id,'uncertain');jobs.reconcile(id,'created','ساخت در سرویس کنترل‌شده بررسی و تأیید شده است.');};
+ const first=draft(112297);jobs.prepareForBuild(first.id,first.data);complete(first.id);assert.equal(s.typeStatus('doosti',112297).count,1);
+ const high=draft(112400);jobs.prepareForBuild(high.id,high.data);complete(high.id);assert.equal(s.nextType('doosti'),112401);
+ const repeated=draft(112297,'adwise');assert.throws(()=>jobs.prepareForBuild(repeated.id,repeated.data));assert.equal(s.nextType('doosti'),112401);assert.equal(s.job(repeated.id).status,'review');
+ assert.throws(()=>jobs.prepareForBuild(repeated.id,{...repeated.data,confirmTypeReuse:false}));
+ jobs.prepareForBuild(repeated.id,{...repeated.data,confirmTypeReuse:true});assert.equal(s.typeReuseApproved(s.job(repeated.id).data),true);
+ assert.throws(()=>jobs.prepareForBuild(repeated.id,{...repeated.data,type:112400}));
+ complete(repeated.id);assert.equal(s.typeStatus('doosti',112297).count,2);assert.equal(s.nextType('doosti'),112401);assert.equal(s.typeStatus('rezaei',112297).used,false);
+ assert.equal((s.db.prepare('SELECT COUNT(*) AS n FROM used_types WHERE supervisor=? AND type=?').get('doosti',112297) as any).n,1);
+ const a=draft(112297),z=draft(112298);assert.throws(()=>b.startBatch([{id:a.id,data:a.data},{id:z.id,data:z.data}],{doosti:112297},true));
+ const queue=b.startBatch([{id:a.id,data:{...a.data,confirmTypeReuse:true}},{id:z.id,data:z.data}],{doosti:112297},true);
+ await b.runBatch(queue.id,async id=>s.update(id,'checked'),async id=>s.transaction(()=>{const j=s.job(id);s.consumeType(j.data,id);s.update(id,'succeeded');s.db.prepare('DELETE FROM lease WHERE job=?').run(id);}));
+ assert.equal(b.batch(queue.id).status,'succeeded');assert.equal(s.typeStatus('doosti',112297).count,3);assert.equal(s.typeStatus('doosti',112298).count,1);assert.equal(s.nextType('doosti'),112401);
+ s.db.close();
+});

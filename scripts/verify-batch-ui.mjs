@@ -2,6 +2,7 @@ import {chromium} from 'playwright';
 import {readFileSync,mkdirSync} from 'node:fs';
 import assert from 'node:assert/strict';
 const config=JSON.parse(readFileSync('config/defaults.json','utf8'));
+const reuseTypeMode=process.argv.includes('--reuse-type');
 const browser=await chromium.launch({headless:true,channel:'msedge'});
 try{
  const ctx=await browser.newContext({serviceWorkers:'block'});const errors=[];let uploads=0,previews=0,submitted;
@@ -10,6 +11,7 @@ try{
   const u=new URL(route.request().url());if(u.origin!=='http://127.0.0.1:3140')return route.abort();if(!u.pathname.startsWith('/api/'))return route.continue();
   const body=()=>JSON.parse(route.request().postData()||'{}');let reply;
   switch(u.pathname){
+   case '/api/landing/type-status':reply={used:reuseTypeMode&&body().supervisor==='doosti'&&body().type===880001,count:1};break;
    case '/api/bootstrap':reply={csrf:'fixture'};break;
    case '/api/settings':reply={config,counters:{doosti:112292,rezaei:771111},tokenOptions:{doosti:[{company:'trend',masked:'••••'}]},locked:null};break;
    case '/api/tokens/selected':reply={value:'fixture-token-'+body().supervisor};break;
@@ -22,6 +24,7 @@ try{
    }
    case '/api/landing/batches':{
     submitted=body();assert.deepEqual(submitted.starts,{doosti:880001,rezaei:771555});assert.equal(submitted.confirm,true);assert.equal(submitted.items.length,2);
+    if(reuseTypeMode){assert.equal(submitted.items[0].data.confirmTypeReuse,true);assert.equal(submitted.items[1].data.confirmTypeReuse,false);}
     assert.deepEqual(submitted.items.map(i=>i.data.uploadId),['upload-1','upload-2']);
     reply={id:'batch-fixture',status:'succeeded',data:{ids:submitted.items.map(i=>i.id)},jobs:submitted.items.map(i=>({...records.get(i.id),data:{...i.data,type:submitted.starts[i.data.supervisor]},status:'succeeded',result:{url:'https://test.invalid/'+i.data.slug}}))};break;
    }
@@ -41,6 +44,7 @@ try{
  await p.getByLabel('سرپرست',{exact:true}).nth(1).selectOption('rezaei');
  await p.getByLabel('تایپ',{exact:true}).nth(1).fill('771555');
  await p.locator('input[value="fixture-token-rezaei"]').waitFor();
+ if(reuseTypeMode)await p.getByLabel('این تایپ قبلاً استفاده شده؛ استفاده دوباره از همین شماره را تأیید می‌کنم.',{exact:true}).check();
  assert.equal(await p.getByText('شماره تایپ بعدی',{exact:true}).count(),0);
  const start=p.getByRole('button',{name:'شروع ساخت واقعی به‌ترتیب (2 درخواست)',exact:true});assert.equal(await start.isEnabled(),false);
  mkdirSync('data/qa',{recursive:true});await p.screenshot({path:'data/qa/batch-review-fixture.png',fullPage:true});

@@ -10,6 +10,7 @@ try{
  const job=()=>({id:'error-fixture',status:phase,data,error:phase==='failed'?'نوع فایل برگشتی تصویر نیست؛ لندینگ ساخته نشد.':null,result:phase==='failed'?{uploadDiagnostic:diagnostic}:null});
  await ctx.route('**/*',async route=>{const u=new URL(route.request().url());if(u.origin!=='http://127.0.0.1:3140')return route.abort();if(!u.pathname.startsWith('/api/'))return route.continue();let reply;
   switch(u.pathname){
+   case '/api/landing/type-status':reply={used:false,count:0};break;
    case '/api/bootstrap':reply={csrf:'fixture'};break;
    case '/api/settings':reply={config,counters:{doosti:112297},tokenOptions:{doosti:[{id:'',company:'trend',label:'توکن اصلی'}]},locked:null};break;
    case '/api/connection':reply={configured:true};break;

@@ -1,4 +1,6 @@
+import NavIcon from './NavIcon';
 import LandingResult from './LandingResult';
+import TypeReuseWarning from './TypeReuseWarning';
 import SiteErrorView from './SiteErrorView';
 import UploadDiagnosticView from './UploadDiagnosticView';
 import ConnectionSettings from './ConnectionSettings';
@@ -8,6 +10,7 @@ import SlugEditor from './SlugEditor';
 import React,{useState,useEffect} from 'react';
 import {createRoot} from 'react-dom/client';
 import './style.css';
+import './theme.css';
 import Batch from './Batch';
 import SelectedToken from './SelectedToken';
 let csrf='';
@@ -22,6 +25,8 @@ function App(){
  const [history,setHistory]=useState<any[]>([]),[q,setQ]=useState(''),[status,setStatus]=useState(''),[historySupervisor,setHistorySupervisor]=useState(''),[date,setDate]=useState('');
  const [outcome,setOutcome]=useState(''),[note,setNote]=useState('');
  const [connection,setConnection]=useState<any>(),[commitApproved,setCommitApproved]=useState(false);
+ const [reuseApproval,setReuseApproval]=useState('');
+ useEffect(()=>setReuseApproval(''),[current?.id]);
  const run=async(fn:()=>Promise<any>)=>{setError('');setNotice('');setBusy(true);try{await fn();}catch(e){setError((e as Error).message);}finally{setBusy(false);}};
  const loadSettings=async()=>{const s=await api('/settings');setSettings(s);setConnection(await api('/connection'));};
  useEffect(()=>{void run(async()=>{csrf=(await api('/bootstrap')).csrf;await loadSettings();});},[]);
@@ -32,14 +37,14 @@ function App(){
  useEffect(()=>{if(tab==='history')void run(loadHistory);},[tab,q,status,historySupervisor,date]);
  const c=settings?.config;
  const derivedTitle=draft&&c?`${c.landingPages[draft.category]?.label||'…'} ${draft.type} ${draft.blogger||'…'} / ${c.supervisors[draft.supervisor]?.label||'…'}`:'';
- const change=(key:string,value:any)=>{setDraft((d:any)=>({...d,[key]:value,...(['company','supervisor'].includes(key)?{tokenCompany:'',tokenId:''}:{})}));setApproved(false);};
+ const change=(key:string,value:any)=>{if(['type','supervisor'].includes(key))setReuseApproval('');setDraft((d:any)=>({...d,[key]:value,...(['company','supervisor'].includes(key)?{tokenCompany:'',tokenId:''}:{})}));setApproved(false);};
  const select=(label:string,value:string,items:any,fn:(value:string)=>void,required=false)=><label>{label}<select aria-label={label} value={value||''} onChange={e=>fn(e.target.value)}><option value="">{required?'نیاز به انتخاب دستی':'انتخاب کنید'}</option>{Object.entries(items||{}).map(([k,v]:any)=><option key={k} value={k}>{v.label}</option>)}</select></label>;
  const openJob=(j:any)=>{setCurrent(j);setDraft(j.data);setSlugManual(true);setTitleManual(true);setApproved(j.status==='ready');setCommitApproved(false);setTab('new');};
  const retryable=current&&['failed','duplicate','canceled'].includes(current.status);
  const canEdit=current&&(['review','ready'].includes(current.status)||retryable);
  const result=current?.status==='succeeded'?current.result:null;
  return <><header><div className="brand">هـ</div><div><h1>دستیار ساخت لندینگ</h1><p>همکده · از درخواست تا انتشار</p></div><span className="local">نسخه محلی</span></header>
- <div className="layout"><aside><nav>{[['new','ساخت لندینگ'],['batch','ساخت گروهی'],['history','تاریخچه عملیات'],['settings','تنظیمات']].map(([key,label])=><button key={key} className={tab===key?'active':''} onClick={()=>setTab(key)}>{label}</button>)}</nav><button disabled={busy||!!settings?.locked} onClick={()=>void run(async()=>setNotice((await api('/browser/login',{})).message))}>ورود دستی به همکده ↗</button></aside>
+ <div className="layout"><aside><nav>{[['new','ساخت لندینگ'],['batch','ساخت گروهی'],['history','تاریخچه عملیات'],['settings','تنظیمات']].map(([key,label])=><button key={key} className={tab===key?'active':''} onClick={()=>setTab(key)}><NavIcon name={key}/>{label}</button>)}</nav><button disabled={busy||!!settings?.locked} onClick={()=>void run(async()=>setNotice((await api('/browser/login',{})).message))}>ورود دستی به همکده ↗</button></aside>
  <main>{error&&<div role="alert" className="alert error">{error}</div>}{notice&&<div role="status" className="alert">{notice}</div>}
  <div hidden={tab!=='batch'}><Batch api={api} settings={settings} connection={connection} reload={loadSettings} onOpen={openJob}/></div>
  {tab==='new'&&<div className={'alert '+(connection?.configured?'':'warning')}>{connection?.configured?'حساب متصل است؛ اجرای سفارش از طریق API و بدون بازبودن Chrome انجام می‌شود.':'پیش از اجرای واقعی، اتصال حساب را در تنظیمات تکمیل کنید. دریافت متن و پیش‌نمایش بدون اتصال حساب هم کار می‌کند.'}</div>}
@@ -51,6 +56,7 @@ function App(){
  <ProviderSelect value={draft.builder} secondary={c?.landingPages[draft.category]?.moshavereUrl} onChange={v=>change('builder',v)}/>
  <SelectedToken api={api} revision={settings} supervisor={draft.supervisor} company={draft.company} tokenId={draft.tokenId} options={settings?.tokenOptions?.[draft.supervisor]} onSelect={id=>change('tokenId',id)}/>
  <label>تایپ<input type="number" min="1" value={draft.type||''} placeholder="تایپ این درخواست" onChange={e=>change('type',Number(e.target.value))}/></label></div>
+ <TypeReuseWarning api={api} supervisor={draft.supervisor} type={Number(draft.type)} confirmed={reuseApproval===draft.supervisor+':'+draft.type} onConfirm={v=>setReuseApproval(v?draft.supervisor+':'+draft.type:'')}/>
  {draft.builder==='moshavere'&&!connection?.providers?.moshavere?.configured&&<p className="alert warning">نشست مشاوره هنوز متصل نیست؛ از تنظیمات، «اتصال یا تمدید نشست مشاوره» را انجام دهید.</p>}
  <h3 className="previewHeading">عنوان و اسلاگ نهایی</h3><label>عنوان لندینگ<input className="titleInput" value={titleManual?draft.title||'':derivedTitle} onChange={e=>{setTitleManual(true);change('title',e.target.value);}}/></label><SlugEditor api={api} blogger={draft.blogger} value={draft.slug} slugDate={draft.slugDate} remembered={draft.remembered} onChange={v=>{setSlugManual(true);change('slug',v);}}/><div className="inline"><small>{slugManual?'اسلاگ دستی است و خودکار بازنویسی نمی‌شود.':'اسلاگ به‌صورت خودکار پیشنهاد می‌شود.'}</small><button className="textButton" onClick={()=>{setSlugManual(false);setTitleManual(false);setApproved(false);}}>تولید مجدد عنوان و اسلاگ</button></div>
  </fieldset>
@@ -58,7 +64,7 @@ function App(){
  <details><summary>اطلاعات داخلی و متن اصلی</summary><pre>{JSON.stringify({unknown:draft.unknown,companyRaw:draft.companyRaw,raw:draft.raw},null,2)}</pre></details>
  
  {retryable&&<p className="alert">می‌توانید اطلاعات همین سفارش را اصلاح کنید. بنر تأییدشده قبلی حفظ می‌شود و دوباره آپلود نخواهد شد.</p>}
- {canEdit&&<div className="actions"><button className="primary" disabled={busy||!!settings?.locked||(draft.builder==='moshavere'?(!connection?.providers?.moshavere?.configured||!c?.landingPages[draft.category]?.moshavereUrl):!connection?.configured)} onClick={()=>void run(async()=>{setCommitApproved(false);setCurrent(await api(retryable?'/landing/jobs/'+current.id+'/retry':'/landing/build',{id:current.id,data:{...draft,tokenCompany:draft.company,title:titleManual?draft.title:derivedTitle}}));await loadSettings();})}>{retryable?'بررسی دوباره با همین بنر':'آپلود و بررسی واقعی (بدون ساخت)'}</button></div>}
+ {canEdit&&<div className="actions"><button className="primary" disabled={busy||!!settings?.locked||(draft.builder==='moshavere'?(!connection?.providers?.moshavere?.configured||!c?.landingPages[draft.category]?.moshavereUrl):!connection?.configured)} onClick={()=>void run(async()=>{setCommitApproved(false);setCurrent(await api(retryable?'/landing/jobs/'+current.id+'/retry':'/landing/build',{id:current.id,data:{...draft,confirmTypeReuse:reuseApproval===draft.supervisor+':'+draft.type,tokenCompany:draft.company,title:titleManual?draft.title:derivedTitle}}));await loadSettings();})}>{retryable?'بررسی دوباره با همین بنر':'آپلود و بررسی واقعی (بدون ساخت)'}</button></div>}
  </section>
  {current.status==='checked'&&<section className="successResult"><h3>بررسی واقعی تکمیل شد؛ هنوز لندینگ ساخته نشده است</h3><p>{current.result?.imageReused?'بنر قبلی بدون آپلود دوباره بررسی و تأیید شد.':'بنر آپلود و تطبیق داده شد.'} ترکیب تایپ و توکن تکراری نیست. با ثبت نهایی، کنترل تکراری بودن دوباره اجرا می‌شود.</p><p>{draft.title||derivedTitle}</p><p dir="ltr">{draft.slug}</p><label className="confirmChoice"><input type="checkbox" checked={commitApproved} onChange={e=>setCommitApproved(e.target.checked)}/>اطلاعات را بررسی کردم و می‌خواهم لندینگ واقعاً ساخته شود.</label><div className="actions"><button disabled={busy} onClick={()=>void run(async()=>{setCurrent(await api('/landing/jobs/'+current.id+'/cancel',{}));await loadSettings();})}>لغو بدون ساخت</button><button className="primary" disabled={busy||!commitApproved} onClick={()=>void run(async()=>{setCommitApproved(false);setCurrent(await api('/landing/jobs/'+current.id+'/commit',{confirm:true}));await loadSettings();})}>ثبت نهایی و دریافت لینک</button></div></section>}
  {current.error&&<section className="errorResult"><h3>{statuses[current.status]}</h3><p>{current.error}</p><p>تایپ {draft.type} · {draft.blogger} · {c?.supervisors[draft.supervisor]?.label} · {c?.companies[draft.company]?.label}</p><SiteErrorView details={current.result?.siteError}/><UploadDiagnosticView details={current.result?.uploadDiagnostic}/>{current.result?.count!==undefined&&<p>تعداد لندینگ‌های موجود: {current.result.count} — کپی انجام نشده است.</p>}{current.result?.viewLinks?.map((url:string)=><a key={url} href={url} target="_blank" rel="noreferrer">مشاهده لندینگ موجود ↗</a>)}</section>}
