@@ -19,14 +19,14 @@ try{
    case '/api/landing/batches/active':reply=null;break;
    case '/api/uploads':reply={id:'upload-'+(++uploads)};break;
    case '/api/landing/preview':{
-    const data=body();const n=++previews;assert.equal(data.uploadId,'upload-'+n);assert.equal(data.raw,'درخواست '+n);
+    const data=body();const n=++previews;assert.equal(data.uploadId,'upload-'+n);assert.equal(data.raw,'درخواست '+n);assert.equal(data.supervisor,'doosti');
     reply={id:'job-'+n,data:{blogger:'بلاگر '+n,date:'1405/08/17',slug:'blogger'+n,category:'infidelity',supervisor:'doosti',company:'trend',uploadId:data.uploadId},status:'review'};records.set(reply.id,reply);break;
    }
    case '/api/landing/batches':{
-    submitted=body();assert.deepEqual(submitted.starts,{doosti:880001,rezaei:771555});assert.equal(submitted.confirm,true);assert.equal(submitted.items.length,2);
+    submitted=body();assert.deepEqual(submitted.starts,{doosti:880001});assert.equal(submitted.confirm,true);assert.equal(submitted.items.length,2);assert.ok(submitted.items.every(i=>i.data.supervisor==='doosti'));
     if(reuseTypeMode){assert.equal(submitted.items[0].data.confirmTypeReuse,true);assert.equal(submitted.items[1].data.confirmTypeReuse,false);}
     assert.deepEqual(submitted.items.map(i=>i.data.uploadId),['upload-1','upload-2']);
-    reply={id:'batch-fixture',status:'succeeded',data:{ids:submitted.items.map(i=>i.id)},jobs:submitted.items.map(i=>({...records.get(i.id),data:{...i.data,type:submitted.starts[i.data.supervisor]},status:'succeeded',result:{url:'https://test.invalid/'+i.data.slug}}))};break;
+    reply={id:'batch-fixture',status:'succeeded',data:{ids:submitted.items.map(i=>i.id)},jobs:submitted.items.map((i,index)=>({...records.get(i.id),data:{...i.data,type:submitted.starts[i.data.supervisor]+index},status:'succeeded',result:{url:'https://test.invalid/'+i.data.slug}}))};break;
    }
    default:throw new Error('Unexpected fixture API '+u.pathname);
   }
@@ -34,6 +34,7 @@ try{
  });
  const p=await ctx.newPage({viewport:{width:1440,height:1000}});p.on('pageerror',e=>errors.push(e.message));await p.goto('http://127.0.0.1:3140');
  await p.getByRole('button',{name:'ساخت گروهی',exact:true}).click();
+ await p.getByLabel('سرپرست گروه',{exact:true}).selectOption('doosti');
  const file=n=>({name:'banner-'+n+'.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jK1cAAAAASUVORK5CYII=','base64')});
  await p.getByLabel('بنر درخواست 1',{exact:true}).setInputFiles(file(1));await p.getByLabel('متن درخواست 1',{exact:true}).fill('درخواست 1');
  await p.getByRole('button',{name:'استخراج و بازبینی همین درخواست',exact:true}).click();
@@ -41,9 +42,13 @@ try{
  await p.getByRole('button',{name:'+ افزودن درخواست و بنر جداگانه',exact:true}).click();
  await p.getByLabel('بنر درخواست 2',{exact:true}).setInputFiles(file(2));await p.getByLabel('متن درخواست 2',{exact:true}).fill('درخواست 2');
  await p.getByRole('button',{name:'استخراج و بازبینی همین درخواست',exact:true}).nth(1).click();
- await p.getByLabel('سرپرست',{exact:true}).nth(1).selectOption('rezaei');
- await p.getByLabel('تایپ',{exact:true}).nth(1).fill('771555');
- await p.locator('input[value="fixture-token-rezaei"]').waitFor();
+ assert.equal(await p.getByLabel('سرپرست گروه',{exact:true}).count(),1);
+ await p.getByLabel('سرپرست گروه',{exact:true}).selectOption('rezaei');
+ await p.locator('input[value="fixture-token-rezaei"]').nth(1).waitFor();
+ assert.equal(await p.getByLabel('تایپ',{exact:true}).nth(1).inputValue(),'771112');
+ await p.getByLabel('سرپرست گروه',{exact:true}).selectOption('doosti');
+ assert.equal(await p.getByLabel('تایپ',{exact:true}).nth(1).inputValue(),'880002');
+ assert.equal(await p.getByLabel('تایپ',{exact:true}).nth(1).getAttribute('readonly'),'');
  if(reuseTypeMode)await p.getByLabel('این تایپ قبلاً استفاده شده؛ استفاده دوباره از همین شماره را تأیید می‌کنم.',{exact:true}).check();
  assert.equal(await p.getByText('شماره تایپ بعدی',{exact:true}).count(),0);
  const start=p.getByRole('button',{name:'شروع ساخت واقعی به‌ترتیب (2 درخواست)',exact:true});assert.equal(await start.isEnabled(),false);

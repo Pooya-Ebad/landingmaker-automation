@@ -48,10 +48,13 @@ test('HTTP API: upload, preview, approval, safe failure, masking, CSRF and resta
   const reviewData=auto.body.data;
   assert.equal((await api('/landing/slug-memory',{blogger:'پوریا عزیزی',slug:'pouryaazizi0817',slugDate:'1405/08/17'})).status,200);
   const learned=await api('/landing/slug',{blogger:'پوريا عزیزی'});assert.equal(learned.body.slug,'pouryaazizi'+todayJalali().slice(5).replace('/',''));assert.equal(learned.body.remembered,true);
+  assert.equal((await api('/landing/given-memory',{blogger:'پوریا عزیزی',slug:'pouryaazizi0817',slugDate:'1405/08/17'})).status,200);
+  assert.equal((await api('/landing/slug',{blogger:'پوریا محمدی'})).body.slugAnalysis.source,'learned');
   assert.equal((await api('/landing/build',{id:auto.body.id,data:{...reviewData,type:771222,blogger:''}})).status,400);assert.equal((await api('/settings')).body.counters.rezaei,771111);
   assert.equal((await api('/landing/build',{id:auto.body.id,data:{...reviewData,type:771222}})).status,202);assert.equal((await api('/landing/jobs/'+auto.body.id)).body.data.type,771222);
   await stop();await launch();assert.equal((await api('/settings')).body.counters.vafadaran,123007);assert.equal((await api('/settings')).body.counters.rezaei,771222);assert.equal((await api('/landing/jobs/'+id)).body.status,'failed');
   assert.equal((await api('/landing/slug',{blogger:'پوریا عزیزی'})).body.remembered,true);
+  assert.equal((await api('/landing/slug',{blogger:'پوریا محمدی'})).body.slugAnalysis.givenLatin,'pourya');assert.equal((await api('/landing/given-memory',{blogger:'پوریا محمدی'},'DELETE')).status,200);
   const memoryPreview=await api('/landing/preview',{raw:'نام بلاگر: پوریا عزیزی',uploadId:upload.id});assert.equal(memoryPreview.body.data.slug,learned.body.slug);
   assert.equal((await api('/landing/slug-memory',{blogger:'پوریا عزیزی'},'DELETE')).status,200);assert.equal((await api('/landing/slug',{blogger:'پوریا عزیزی'})).body.remembered,false);
  }finally{await stop();}

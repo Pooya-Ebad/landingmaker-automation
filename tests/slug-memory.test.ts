@@ -19,5 +19,13 @@ test('slug spelling memory normalizes blogger names, persists only the name and 
  assert.equal(m.suggestSlug('پوریا عزیزی',c,day).slug,'pouryaazizi0817');
  const reopened=new DatabaseSync(path.join(store.dataDir,'app.sqlite'),{readOnly:true});assert.equal((reopened.prepare('SELECT latin FROM slug_memory').get() as any).latin,'pouryaazizi');reopened.close();
  m.rememberSlug('پوریا عزیزی','puryaazizi0817','1405/08/17');assert.equal(m.suggestSlug('پوریا عزیزی',c,day).slug,'puryaazizi0817');
- m.forgetSlug('پوريا عزیزی');assert.equal(m.suggestSlug('پوریا عزیزی',c,day).slug,'pouriaazizi0817');store.db.close();
+ m.forgetSlug('پوريا عزیزی');assert.equal(m.suggestSlug('پوریا عزیزی',c,day).slug,'pouriaazizi0817');
+ m.rememberSlug('پوریا عزیزی','pouryaazizi0817','1405/08/17');m.rememberGivenName('پوریا عزیزی','pouryaazizi0817','1405/08/17',c);
+ assert.equal(m.suggestSlug('پوریا محمدی',c,day).slug,'pouryamohammadi0817');assert.equal(m.suggestSlug('پوریا محمدی',c,day).slugAnalysis.source,'learned');
+ assert.equal(m.suggestSlug('پویا محمدی',c,day).slug,'pouyamohammadi0817');
+ m.rememberSlug('پوریا نوری','pouriannouri0817','1405/08/17');assert.equal(m.suggestSlug('پوریا نوری',c,day).slug,'pouriannouri0817');
+ assert.throws(()=>m.rememberGivenName('پوریا ژژژ','pouryaxxx0817','1405/08/17',c));assert.throws(()=>m.rememberGivenName('پوریا عزیزی','pouryaazizii0817','1405/08/17',c));
+ m.rememberGivenName('امیرحسین نوری','amirhusseinnouri0817','1405/08/17',c);assert.equal(m.suggestSlug('امیر حسین عزیزی',c,day).slug,'amirhusseinazizi0817');
+ m.forgetGivenName('پوريا محمدی',c);assert.equal(m.suggestSlug('پوریا محمدی',c,day).slug,'pouriamohammadi0817');assert.equal(m.suggestSlug('پوریا عزیزی',c,day).slug,'pouryaazizi0817');
+ store.db.close();
 });

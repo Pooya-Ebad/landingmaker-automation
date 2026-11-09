@@ -1,9 +1,17 @@
-/* A brighter workspace, with restrained cobalt and emerald accents. */
+/* Neutral workspace with cobalt accents; original brand artwork is preserved. */
+@font-face{font-family:Estedad;src:url('./assets/fonts/Estedad-Variable.woff2') format('woff2');font-style:normal;font-weight:100 900;font-display:swap}
 :root{--accent:#365bd7;--accent-dark:#2849b7;--teal:#108777;--ink:#243552;--muted:#718099;--line:#dfe6f2}
 body{background:linear-gradient(135deg,#f2f5fc,#f8fafc 65%);color:var(--ink)}
+body{font-family:Estedad,Tahoma,Arial,sans-serif;font-size:14px;font-weight:400;line-height:1.95;font-kerning:normal}
+h1,h2,h3{font-family:Estedad,Tahoma,sans-serif;letter-spacing:normal}
+h1{font-size:19px;font-weight:800}h2{font-size:25px;font-weight:800}h3{font-size:16px;font-weight:700}
+button,nav button{font-family:inherit;font-size:13px;font-weight:600}
+label{font-size:13px;font-weight:500}input,select,textarea,input[dir=ltr]{font-family:Estedad,Tahoma,Arial,sans-serif;font-size:13px;font-weight:400;line-height:1.9}
+textarea.request{font-size:14px;line-height:2.15}input,select,.copyLine{font-variant-numeric:tabular-nums}
+header p,.pageHeading p,.muted{font-size:12px}.fields label small{font-size:11px}
 header{height:90px;border-top:3px solid var(--accent);border-bottom-color:var(--line);box-shadow:0 3px 16px #263c4e04}
 .brand{background:var(--accent);border-radius:14px;width:47px;height:47px;box-shadow:0 5px 12px #365bd722}
-h1{color:#263755}header p{color:var(--muted)}
+h1{color:#243552}header p{color:var(--muted)}
 .local{display:flex;align-items:center;gap:7px;background:#f0faf6;border-color:#d6ece2;padding:4px 12px;color:#35816b;font-size:11px}
 .local::before{content:'';width:6px;height:6px;background:#24a77e;border-radius:50%}
 .layout{min-height:calc(100vh - 90px)}aside{background:#fbfcff;border-left-color:var(--line)}
@@ -23,7 +31,7 @@ input:focus,select:focus,textarea:focus{border-color:#6284e7;box-shadow:0 0 0 3p
 input::placeholder,textarea::placeholder{color:#9aa7ba;font-size:12px}
 input[readonly]{background:#f1f5fc;color:#59708e}fieldset:disabled input,fieldset:disabled select{background:#f5f7fc}
 .request{min-height:265px;background:#fdfdff}.drop{border-color:#a0b9ef;border-radius:13px;background:#f2f6ff;color:#4566af}
-.drop:hover{border-color:#5e84de;background:#edf3ff}.drop strong{font-size:13px}.drop span{color:#8396b8}
+.drop:hover{border-color:#5e84de;background:#eaf0ff}.drop strong{font-size:13px}.drop span{color:#8396b8}
 button{border-color:#d5dfef;color:#415777;border-radius:10px;padding:10px 17px}
 button:hover{background:#f0f4ff;border-color:#b5c7ee}button:focus-visible{outline-color:#91a9f066}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 4px 10px #365bd719}
@@ -40,7 +48,46 @@ button.primary:hover{background:var(--accent-dark);border-color:var(--accent-dar
 .successResult{background:#f1fbf6;border-color:#bee1ce}.successResult h3{color:#2c7d5a}
 .confirmChoice{background:#f4f7ff;border-color:#e0e8fa;border-radius:10px}.confirmChoice input{accent-color:var(--accent)}
 .warning .confirmChoice{background:#fffdf7;border-color:#f2e5c4;color:#8c6a29}
-.copyLine{font-size:16px}.copyLine a{min-width:0}a{color:#365fc8;text-underline-offset:4px}summary{color:#526fa6}
+.copyLine{font-size:16px}.copyLine a{min-width:0}a{color:#4367ce;text-underline-offset:4px}summary{color:#526fa6}
 .tableWrap{border-radius:10px}th{background:#edf2fc;color:#5b72a0}td,th{border-bottom-color:#eaf0f9}tbody tr:hover{background:#f8faff}
 @media(max-width:650px){header{height:83px;padding:13px 18px}.brand{width:42px;height:42px}h1{font-size:16px}aside{padding:10px 12px}nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}nav button,nav button.active{padding:10px 12px;justify-content:flex-start}section{border-radius:13px}.local{display:none}.actions>button{max-width:100%}.confirmChoice{align-items:flex-start}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+.slugInsight{padding:12px 14px;background:#f1f5fc;border:1px solid #e0e8f8;border-radius:10px;margin:-3px 0 12px}
+.slugChoices{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-top:9px}.slugChoices button{padding:4px 10px;font-size:11px;font-family:Consolas,monospace;max-width:100%;overflow-wrap:anywhere}
+.slugReview{font-size:11px;color:#997229;margin:7px 0 0}
+
+.brand{background:#fff;border:1px solid #e3e8f0;box-shadow:0 3px 10px #24355208;flex-shrink:0}.brand img{display:block;width:32px;height:32px;object-fit:contain}
+
+/* The logo's rose is an accent, not a background color for the workspace. */
+:root{--accent:#d81d57;--accent-dark:#b61447;--ink:#303442;--muted:#7b8190;--line:#e5e7ec}
+body{background:#f6f7f9;color:var(--ink)}
+header{border-top-width:2px;box-shadow:0 2px 12px #20263303}
+h1,h2,h3{color:#303746}header p,.pageHeading p,.muted{color:var(--muted)}
+aside{background:#fcfcfd}nav button{color:#717887}
+nav button.active{background:#faf5f7;border-color:#eee5e9;color:#bc2452;box-shadow:inset -3px 0 #db3869}
+nav button:hover{background:#f2f3f6}.active{background:#faf5f7;border-color:#eee5e9;color:#bc2452}
+aside>button{color:#747c8c;border-color:#e1e4ea}
+section{border-color:#e3e6ec;box-shadow:0 4px 16px #20263303}
+h3 b{background:#f4f4f7;color:#6c7181}
+.sectionHeading,.actions,.previewHeading{border-color:#eceef2}
+label{color:#626b7b}
+input,select,textarea{border-color:#dfe3e9;color:#353d4b}
+input:hover,select:hover,textarea:hover{border-color:#bec5d1}
+input:focus,select:focus,textarea:focus{border-color:#d99caf;box-shadow:0 0 0 3px #d81d5709}
+input::placeholder,textarea::placeholder{color:#9ba1ad}
+input[readonly],fieldset:disabled input,fieldset:disabled select{background:#f4f5f7;color:#747d8b}
+.request{background:#fff}
+.drop{background:#fafbfc;border-color:#c6ccd6;color:#737b8c}
+.drop:hover{background:#f7f7f9;border-color:#cda7b5}.drop span{color:#949ba7}
+button{border-color:#dfe3e9;color:#5d6677}button:hover{background:#f3f4f7;border-color:#c5cbd6}
+button:focus-visible{outline-color:#df9eb455}
+button.primary{box-shadow:0 3px 8px #d81d5710}
+button.primary:hover{box-shadow:0 4px 10px #d81d571b}
+.reviewPanel{background:#fafbfc;border-color:#e6e9ee}.reviewPanel h3,.previewHeading{color:#565f70}
+.landingTitle{background:#f4f5f7;border-right-color:#d49aaE;color:#5f6674}
+.textButton,a{color:#ab365a}.textButton:hover{color:#8d2949;background:transparent}summary{color:#747b89}
+.confirmChoice{background:#f7f8fa;border-color:#e4e7ed;color:#626b7b}
+.slugInsight{background:#f6f7f9;border-color:#e5e8ed}
+th{background:#f2f4f7;color:#717b8c}td,th{border-bottom-color:#eceef3}tbody tr:hover{background:#fafbfc}
+.bannerPicker{min-width:0}.bannerPicker .drop{width:100%;margin-bottom:9px}.bannerPicker .drop:focus-within{outline:2px solid var(--accent);outline-offset:3px}
+.bannerFilename{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:ltr;text-align:right;margin-bottom:15px;font-size:11px}

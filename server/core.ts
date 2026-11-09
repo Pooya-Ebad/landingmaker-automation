@@ -1,4 +1,6 @@
-export const normalize=(s:string)=>s.normalize('NFKC').replace(/[يى]/g,'ی').replace(/ك/g,'ک').replace(/[\u200c\u200f\u200e]/g,' ').replace(/[۰-۹٠-٩]/g,c=>String('۰۱۲۳۴۵۶۷۸۹'.includes(c)?'۰۱۲۳۴۵۶۷۸۹'.indexOf(c):'٠١٢٣٤٥٦٧٨٩'.indexOf(c))).replace(/\s+/g,' ').trim();
+import {normalize} from './persian-text';
+export {normalize} from './persian-text';
+import {analyzeName} from './name-transliterator';
 export function parseRequest(raw:string,c:any){
  const fields:Record<string,string>={}; const unknown:Record<string,string>={};
  const looseLines:string[]=[];
@@ -16,22 +18,7 @@ export function parseRequest(raw:string,c:any){
  const supervisor=Object.keys(c.supervisors).find(k=>[k,c.supervisors[k].label].some(a=>normalize(a)===normalize(fields.supervisor||'')));
  return {...fields,supervisor:supervisor||'',supervisorRaw:fields.supervisor||'',company:company||'',companyRaw:fields.company||'',category:matches.length===1?matches[0]:'',unknown,categoryConfidence:matches.length===1?1:0};
 }
-const letters:Record<string,string>={'ا':'a','آ':'a','ب':'b','پ':'p','ت':'t','ث':'s','ج':'j','چ':'ch','ح':'h','خ':'kh','د':'d','ذ':'z','ر':'r','ز':'z','ژ':'zh','س':'s','ش':'sh','ص':'s','ض':'z','ط':'t','ظ':'z','ع':'a','غ':'gh','ف':'f','ق':'gh','ک':'k','گ':'g','ل':'l','م':'m','ن':'n','و':'v','ه':'h','ی':'i','ئ':'y','ء':'','ؤ':'o'};
-import {commonNames} from './persian-names';
-export function transliterate(name:string,dictionary:Record<string,string>={}){
- const clean=(s:string)=>normalize(s).replace(/[\u064b-\u065f\u0670\u0640]/g,'').toLowerCase();
- const words={...commonNames,...Object.fromEntries(Object.entries(dictionary).map(([k,v])=>[clean(k),v]))};
- const word=(w:string):string=>{
-  if(words[w])return words[w];
-  // Handle common compound surnames without changing every occurrence of و to ou.
-  for(const [part,latin] of [['زاده','zadeh'],['نژاد','nejad'],['پور','pour']] as const){
-   if(w.endsWith(part)&&w.length>part.length)return word(w.slice(0,-part.length))+latin;
-  }
-  if(w.startsWith('پور')&&w.length>3)return 'pour'+word(w.slice(3));
-  return [...w].map(c=>letters[c]??c).join('');
- };
- const text=clean(name);return (words[text]||text.split(' ').map(word).join('')).toLowerCase().replace(/[^a-z0-9]/g,'');
-}
+export function transliterate(name:string,dictionary:Record<string,string>={}){return analyzeName(name,dictionary).latin;}
 export function makeSlug(name:string,date:string,c:any){const m=normalize(date).match(/^\d{4}[/-](\d{1,2})[/-](\d{1,2})$/);if(!m||+m[1]<1||+m[1]>12||+m[2]<1||+m[2]>(+m[1]<=6?31:30))return '';return transliterate(name,c.slug.dictionary)+m[1].padStart(2,'0')+m[2].padStart(2,'0');}
 export function todayJalali(now:Date=new Date()){
  const parts=new Intl.DateTimeFormat('en-US-u-ca-persian',{timeZone:'Asia/Tehran',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(now);

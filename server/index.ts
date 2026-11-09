@@ -12,7 +12,7 @@ import {remoteSessionStatus,importChromeSession,loadRemoteSession} from './remot
 import {HamkadehHttp} from './remote-api';
 import {reserveRemoteCommit,commitRemote} from './remote-jobs';
 import {activeBatch,batch,startBatch,runBatch,stopBatch,resumeBatch} from './batches';
-import {suggestSlug,rememberSlug,forgetSlug} from './slug-memory';
+import {suggestSlug,rememberSlug,forgetSlug,rememberGivenName,forgetGivenName} from './slug-memory';
 import {selectedToken,saveToken,saveReferences} from './settings-manager';
 import {providers,type Provider} from './providers';
 const app=express();const port=Number(process.env.PORT||3140);const localOrigin=`http://127.0.0.1:${port}`;
@@ -78,6 +78,8 @@ app.post('/api/landing/preview',wrap((req:any,res:any)=>{
 app.post('/api/landing/slug',wrap((req:any,res:any)=>res.json(suggestSlug(String(req.body.blogger||''),config()))));
 app.post('/api/landing/type-status',wrap((req:any,res:any)=>{const d=z.object({supervisor:z.string(),type:z.number().int().positive().max(999999999)}).parse(req.body);if(!config().supervisors[d.supervisor])throw new Error('سرپرست معتبر نیست.');res.json(typeStatus(d.supervisor,d.type));}));
 app.post('/api/landing/slug-memory',wrap((req:any,res:any)=>{const d=z.object({blogger:z.string().min(1).max(200),slug:z.string().max(210),slugDate:z.string().max(20)}).parse(req.body);res.json(rememberSlug(d.blogger,d.slug,d.slugDate));}));
+app.post('/api/landing/given-memory',wrap((req:any,res:any)=>{const d=z.object({blogger:z.string().min(1).max(200),slug:z.string().max(210),slugDate:z.string().max(20)}).parse(req.body);res.json(rememberGivenName(d.blogger,d.slug,d.slugDate,config()));}));
+app.delete('/api/landing/given-memory',wrap((req:any,res:any)=>res.json(forgetGivenName(z.string().min(1).max(200).parse(req.body.blogger),config()))));
 app.delete('/api/landing/slug-memory',wrap((req:any,res:any)=>res.json(forgetSlug(z.string().min(1).max(200).parse(req.body.blogger)))));
 app.post('/api/landing/approve',wrap((req:any,res:any)=>res.json(publicJob(prepare(req.body.id,req.body.data)))));
 app.post('/api/landing/build',wrap((req:any,res:any)=>{if(req.body.data)prepareForBuild(req.body.id,req.body.data);const j=reserve(req.body.id);void execute(j.id);res.status(202).json(publicJob(job(j.id)));}));
