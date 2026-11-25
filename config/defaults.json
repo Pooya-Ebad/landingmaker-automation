@@ -1,6 +1,6 @@
 {
  "landingPages":{"general":{"label":"کلی","url":"https://new.hamkadeh.com/dashboard/showLandings/newofcopy/62415"},"marital":{"label":"زناشویی","aliases":["مشکلات زناشویی"],"url":"https://new.hamkadeh.com/dashboard/showLandings/newofcopy/62229"},"children":{"label":"فرزند","url":"https://new.hamkadeh.com/dashboard/showLandings/newofcopy/61909"},"infidelity":{"label":"خیانت","url":"https://new.hamkadeh.com/dashboard/showLandings/newofcopy/62088"}},
- "supervisors":{"vafadaran":{"label":"وفاداران","group":"وفاداران"},"rezaei":{"label":"رضایی","group":"مائده رضایی"},"doosti":{"label":"دوستی","group":"دوستی 1405"},"gheshmi":{"label":"قشمی","group":"قشمی"}},
+ "supervisors":{"vafadaran":{"label":"وفاداران","group":"وفاداران"},"rezaei":{"label":"رنجبران","group":"رنجبران"},"doosti":{"label":"پویا","group":"عباداللهی"},"gheshmi":{"label":"مددی","group":"مددی"}},
  "companies":{"adwise":{"label":"ادوایس","aliases":["ادوایس","ادویس","adwise"]},"trend":{"label":"ترند","aliases":["ترند","trend"]},"mostaghim":{"label":"مستقیم","aliases":["مستقیم","mostaghim"]},"artan":{"label":"آرتان","aliases":["آرتان","ارتان","artan"]}},
  "cdnOrigin":"https://cdn.hamkadeh.com","landingOrigin":"https://landing.hamkadeh.com","slug":{"dictionary":{"بهار":"bahar","فرمانی":"farmani","شف":"chef","سحر":"sahar","دریا":"darya","فلورا":"flora","مینا":"mina","حیدری":"heydari"}},
  "execution":{"transport":"http"},

@@ -75,7 +75,7 @@ app.post('/api/landing/preview',wrap((req:any,res:any)=>{
  const c=config();const parsed:any=parseRequest(input.raw,c);const supervisor=input.supervisor||parsed.supervisor||'';const d:any={...parsed,raw:input.raw,uploadId:input.uploadId,file,supervisor,builder:'hamkadeh',type:nextType(supervisor),...suggestSlug(parsed.blogger||'',c)};
  res.json(publicJob(createDraft(d)));
 }));
-app.post('/api/landing/slug',wrap((req:any,res:any)=>res.json(suggestSlug(String(req.body.blogger||''),config()))));
+app.post('/api/landing/slug',wrap((req:any,res:any)=>{const d=z.object({blogger:z.string().max(200),slugDate:z.string().max(20).optional()}).parse(req.body);res.json(suggestSlug(d.blogger,config(),new Date(),d.slugDate));}));
 app.post('/api/landing/type-status',wrap((req:any,res:any)=>{const d=z.object({supervisor:z.string(),type:z.number().int().positive().max(999999999)}).parse(req.body);if(!config().supervisors[d.supervisor])throw new Error('سرپرست معتبر نیست.');res.json(typeStatus(d.supervisor,d.type));}));
 app.post('/api/landing/slug-memory',wrap((req:any,res:any)=>{const d=z.object({blogger:z.string().min(1).max(200),slug:z.string().max(210),slugDate:z.string().max(20)}).parse(req.body);res.json(rememberSlug(d.blogger,d.slug,d.slugDate));}));
 app.post('/api/landing/given-memory',wrap((req:any,res:any)=>{const d=z.object({blogger:z.string().min(1).max(200),slug:z.string().max(210),slugDate:z.string().max(20)}).parse(req.body);res.json(rememberGivenName(d.blogger,d.slug,d.slugDate,config()));}));
@@ -99,6 +99,16 @@ app.get('/api/landing/jobs',wrap((req:any,res:any)=>{
  const jobs=db.prepare('SELECT id FROM jobs ORDER BY created DESC LIMIT 1000').all().map((r:any)=>publicJob(job(r.id)));
  const q=String(req.query.q||'').toLowerCase();const day=(created:string)=>{const p=new Intl.DateTimeFormat('en',{timeZone:'Asia/Tehran',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(created));return ['year','month','day'].map(k=>p.find(v=>v.type===k)?.value).join('-');};res.json(jobs.filter(j=>(!q||[j.data.blogger,j.data.type,j.data.slug].join(' ').toLowerCase().includes(q))&&(!req.query.status||j.status===req.query.status)&&(!req.query.supervisor||j.data.supervisor===req.query.supervisor)&&(!req.query.date||day(j.created)===String(req.query.date))));
 }));
+app.post('/api/landing/restore-batch',wrap((req:any,res:any)=>{
+ const {ids}=z.object({ids:z.array(z.string().uuid()).min(1).max(50)}).parse(req.body);
+ if(activeBatch()||locked())throw new Error('ابتدا عملیات فعال را بررسی کنید.');
+ const jobs=ids.map(id=>job(id));
+ if(new Set(ids).size!==ids.length)throw new Error('سفارش تکراری انتخاب شده است.');
+ for(const j of jobs){if(!['review','ready'].includes(j.status))throw new Error('فقط سفارش‌های در انتظار بررسی یا آماده را می‌توان به صف برگرداند.');if(!j.data.file||!existsSync(j.data.file))throw new Error('بنر یکی از سفارش‌ها موجود نیست؛ آن را دوباره انتخاب کنید.');}
+ if(new Set(jobs.map(j=>j.data.supervisor)).size!==1)throw new Error('درخواست‌های یک سرپرست را انتخاب کنید.');
+ res.json(jobs.map(publicJob));
+}));
+app.get('/api/landing/jobs/:id/banner',wrap((req:any,res:any)=>{const j=job(req.params.id);if(!j.data.file||!existsSync(j.data.file))throw new Error('بنر موجود نیست.');res.type('image/'+(j.data.file.endsWith('.png')?'png':'jpeg')).sendFile(path.resolve(j.data.file));}));
 app.get('/api/landing/jobs/:id',wrap((req:any,res:any)=>res.json(publicJob(job(req.params.id)))));
 app.post('/api/browser/login',wrap(async(_req:any,res:any)=>{if(locked())throw new Error('عملیات در جریان است.');const c=config();c.browser.headless=false;const ctx=await browser(c);const p=await ctx.newPage();await p.goto('https://new.hamkadeh.com',{waitUntil:'domcontentloaded'});res.json({message:'ورود را در مرورگر بازشده انجام دهید. نشست به‌صورت محلی حفظ می‌شود.'});}));
 app.post('/api/browser/cdn',wrap(async(_req:any,res:any)=>{if(locked())throw new Error('عملیات در جریان است.');const c=config();c.browser.headless=false;const p=await (await browser(c)).newPage();await p.goto(c.cdnOrigin,{waitUntil:'domcontentloaded'});res.json({message:'صفحه CDN برای بررسی و ورود دستی باز شد.'});}));

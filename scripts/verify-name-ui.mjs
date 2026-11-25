@@ -19,7 +19,7 @@ try{
    case '/api/landing/type-status':reply={used:false,count:0};break;
    case '/api/uploads':reply={id:'fixture-upload'};break;
    case '/api/tokens/selected':reply={value:'fixture-routing-token'};break;
-   case '/api/landing/slug':reply=suggestion(body().blogger);break;
+   case '/api/landing/slug':{reply=suggestion(body().blogger);if(body().slugDate){const date=body().slugDate;const suffix=date.split('/').slice(1).join('');reply.slug=reply.slug.slice(0,-4)+suffix;reply.slugDate=date;}break;}
    case '/api/landing/preview':reply={id:'fixture-job',status:'review',data:{blogger:'مهرنوش ماهینی',date:'1405/08/18',type:771113,company:'adwise',supervisor:'rezaei',category:'marital',...suggestion('مهرنوش ماهینی')}};break;
    case '/api/landing/slug-memory':assert.equal(body().slug,'mehrnoshmahini0818');remembered++;reply={remembered:true};break;
    case '/api/landing/given-memory':assert.equal(body().blogger,'مهرنوش ماهینی');learned++;reply={givenName:'مهرنوش',givenLatin:'mehrnosh'};break;
@@ -33,9 +33,11 @@ try{
  await p.getByRole('button',{name:'mehrnoshmahini0818',exact:true}).click();await p.getByText('املای انتخاب‌شده برای همین بلاگر ذخیره شد.',{exact:true}).waitFor();
  await p.getByRole('button',{name:'یادگیری املای «مهرنوش» برای بلاگرهای هم‌نام',exact:true}).click();await p.getByText('املای «مهرنوش» برای پیشنهادهای بعدی یاد گرفته شد: mehrnosh',{exact:true}).waitFor();assert.equal(remembered,1);assert.equal(learned,1);
  await p.getByLabel('نام بلاگر',{exact:true}).fill('هانیه نوری');assert.equal(await p.getByLabel('اسلاگ نهایی (قابل ویرایش)',{exact:true}).inputValue(),'mehrnoshmahini0818');
- await p.getByRole('button',{name:'ساخت گروهی',exact:true}).click();await p.getByLabel('سرپرست گروه',{exact:true}).selectOption('rezaei');await p.getByLabel('بنر درخواست 1',{exact:true}).setInputFiles(file);await p.getByLabel('متن درخواست 1',{exact:true}).fill('مهرنوش ماهینی');await p.getByRole('button',{name:'استخراج و بازبینی همین درخواست',exact:true}).click();
+ await p.getByRole('button',{name:'ساخت گروهی',exact:true}).click();await p.getByLabel('سرپرست گروه',{exact:true}).selectOption('rezaei');await p.getByLabel('تاریخ اسلاگ (شمسی)',{exact:true}).fill('1405/08/18');await p.getByRole('button',{name:'اعمال تاریخ',exact:true}).click();await p.getByLabel('بنر درخواست 1',{exact:true}).setInputFiles(file);await p.getByLabel('متن درخواست 1',{exact:true}).fill('مهرنوش ماهینی');await p.getByRole('button',{name:'استخراج و بازبینی همین درخواست',exact:true}).click();
  await p.getByLabel('نام بلاگر',{exact:true}).fill('هانیه نوری');await p.locator('input[value="haniehnouri0818"]').waitFor();
  await p.getByLabel('نام بلاگر',{exact:true}).fill('مهرنوش ماهینی');await p.getByRole('button',{name:'mehrnoshmahini0818',exact:true}).click();await p.getByText('املای انتخاب‌شده برای همین بلاگر ذخیره شد.',{exact:true}).waitFor();
  await p.getByLabel('نام بلاگر',{exact:true}).fill('ژژژ عزیزی');await p.getByText('املای «ژژژ» در واژه‌نامه مشخص نیست؛ پیشنهاد را پیش از ساخت بررسی کنید.',{exact:true}).waitFor();assert.equal(await p.getByLabel('اسلاگ نهایی (قابل ویرایش)',{exact:true}).inputValue(),'mehrnoshmahini0818');
+ await p.getByLabel('تاریخ اسلاگ (شمسی)',{exact:true}).fill('1405/08/25');await p.getByRole('button',{name:'اعمال تاریخ',exact:true}).click();await p.locator('input[value="mehrnoshmahini0825"]').waitFor();
+ await p.getByLabel('تاریخ اسلاگ (شمسی)',{exact:true}).fill('1405/08/18');await p.getByRole('button',{name:'اعمال تاریخ',exact:true}).click();await p.locator('input[value="mehrnoshmahini0818"]').waitFor();
  assert.deepEqual(errors,[]);mkdirSync('data/qa',{recursive:true});await p.screenshot({path:'data/qa/name-engine-fixture.png',fullPage:true});console.log('Name UI passed: alternatives, explicit given-name learning, unknown-name warning, batch updates and manual slug preservation. All writes mocked.');
 }finally{await browser.close();}

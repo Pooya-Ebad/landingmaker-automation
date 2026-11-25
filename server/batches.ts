@@ -20,10 +20,10 @@ export function startBatch(items:{id:string;data:any}[],starts:Record<string,num
   const start=starts[supervisor]??nextType(supervisor);setCounter(supervisor,start);allocated[supervisor]=start;
  }
  const slugs=new Set<string>();
- for(const item of items){
+ for(const [index,item] of items.entries()){
   const supervisor=item.data.supervisor??job(item.id).data.supervisor;const type=allocated[supervisor]++;
   if(type>999999999)throw new Error('تایپ خارج از محدوده مجاز است.');
-  const j=prepare(item.id,{...item.data,type,title:''},type,true);
+  let j;try{j=prepare(item.id,{...item.data,type,title:''},type,true);}catch(e){throw new Error(`درخواست ${index+1}: ${(e as Error).message}`);}
   if(slugs.has(j.data.slug))throw new Error('اسلاگ دو درخواست یکسان است؛ قبل از شروع آن‌ها را اصلاح کنید.');slugs.add(j.data.slug);
  }
  const id=randomUUID();db.prepare('INSERT INTO batches VALUES(?,?,?,?)').run(id,new Date().toISOString(),'running',JSON.stringify({ids:items.map(i=>i.id),starts,stop:false}));return batch(id);

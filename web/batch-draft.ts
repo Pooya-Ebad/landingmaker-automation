@@ -1,0 +1,3 @@
+const database=new Promise<IDBDatabase>((resolve,reject)=>{const r=indexedDB.open('landing-batch-draft',1);r.onupgradeneeded=()=>r.result.createObjectStore('draft');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
+export async function readBatchDraft(){const db=await database;return new Promise<any>((resolve,reject)=>{const r=db.transaction('draft').objectStore('draft').get('current');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}
+export async function saveBatchDraft(value:any){const db=await database;return new Promise<void>((resolve,reject)=>{const t=db.transaction('draft','readwrite');t.objectStore('draft').put(value,'current');t.oncomplete=()=>resolve();t.onerror=()=>reject(t.error);});}

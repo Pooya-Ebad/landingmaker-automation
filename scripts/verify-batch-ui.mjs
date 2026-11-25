@@ -2,6 +2,7 @@ import {chromium} from 'playwright';
 import {readFileSync,mkdirSync} from 'node:fs';
 import assert from 'node:assert/strict';
 const config=JSON.parse(readFileSync('config/defaults.json','utf8'));
+const restoreMode=process.argv.includes('--restore');
 const reuseTypeMode=process.argv.includes('--reuse-type');
 const browser=await chromium.launch({headless:true,channel:'msedge'});
 try{
@@ -9,18 +10,22 @@ try{
  const records=new Map();
  await ctx.route('**/*',async route=>{
   const u=new URL(route.request().url());if(u.origin!=='http://127.0.0.1:3140')return route.abort();if(!u.pathname.startsWith('/api/'))return route.continue();
+  if(u.pathname.endsWith('/banner'))return route.fulfill({status:200,contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jK1cAAAAASUVORK5CYII=','base64')});
   const body=()=>JSON.parse(route.request().postData()||'{}');let reply;
   switch(u.pathname){
+   case '/api/landing/slug':{const d=body(),date=d.slugDate||'1405/08/17';reply={slug:(d.blogger||'').replaceAll(' ','')+date.split('/').slice(1).join(''),slugDate:date};break;}
    case '/api/landing/type-status':reply={used:reuseTypeMode&&body().supervisor==='doosti'&&body().type===880001,count:1};break;
    case '/api/bootstrap':reply={csrf:'fixture'};break;
    case '/api/settings':reply={config,counters:{doosti:112292,rezaei:771111},tokenOptions:{doosti:[{company:'trend',masked:'••••'}]},locked:null};break;
    case '/api/tokens/selected':reply={value:'fixture-token-'+body().supervisor};break;
    case '/api/connection':reply={configured:true};break;
    case '/api/landing/batches/active':reply=null;break;
+   case '/api/landing/jobs':reply=[...records.values()];break;
+   case '/api/landing/restore-batch':reply=body().ids.map(id=>records.get(id));break;
    case '/api/uploads':reply={id:'upload-'+(++uploads)};break;
    case '/api/landing/preview':{
     const data=body();const n=++previews;assert.equal(data.uploadId,'upload-'+n);assert.equal(data.raw,'درخواست '+n);assert.equal(data.supervisor,'doosti');
-    reply={id:'job-'+n,data:{blogger:'بلاگر '+n,date:'1405/08/17',slug:'blogger'+n,category:'infidelity',supervisor:'doosti',company:'trend',uploadId:data.uploadId},status:'review'};records.set(reply.id,reply);break;
+    reply={id:'job-'+n,created:new Date().toISOString(),data:{blogger:'بلاگر '+n,date:'1405/08/17',slug:'blogger'+n+'0817',slugDate:'1405/08/17',category:'infidelity',supervisor:'doosti',company:'trend',uploadId:data.uploadId},status:'review'};records.set(reply.id,reply);break;
    }
    case '/api/landing/batches':{
     submitted=body();assert.deepEqual(submitted.starts,{doosti:880001});assert.equal(submitted.confirm,true);assert.equal(submitted.items.length,2);assert.ok(submitted.items.every(i=>i.data.supervisor==='doosti'));
@@ -34,7 +39,7 @@ try{
  });
  const p=await ctx.newPage({viewport:{width:1440,height:1000}});p.on('pageerror',e=>errors.push(e.message));await p.goto('http://127.0.0.1:3140');
  await p.getByRole('button',{name:'ساخت گروهی',exact:true}).click();
- await p.getByLabel('سرپرست گروه',{exact:true}).selectOption('doosti');
+ await p.getByLabel('سرپرست گروه',{exact:true}).selectOption('doosti');await p.getByLabel('تاریخ اسلاگ (شمسی)',{exact:true}).fill('1405/08/17');await p.getByRole('button',{name:'اعمال تاریخ',exact:true}).click();
  const file=n=>({name:'banner-'+n+'.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jK1cAAAAASUVORK5CYII=','base64')});
  await p.getByLabel('بنر درخواست 1',{exact:true}).setInputFiles(file(1));await p.getByLabel('متن درخواست 1',{exact:true}).fill('درخواست 1');
  await p.getByRole('button',{name:'استخراج و بازبینی همین درخواست',exact:true}).click();
@@ -49,6 +54,11 @@ try{
  await p.getByLabel('سرپرست گروه',{exact:true}).selectOption('doosti');
  assert.equal(await p.getByLabel('تایپ',{exact:true}).nth(1).inputValue(),'880002');
  assert.equal(await p.getByLabel('تایپ',{exact:true}).nth(1).getAttribute('readonly'),'');
+ assert.equal(await p.getByLabel('تاریخ اسلاگ (شمسی)',{exact:true}).count(),1);await p.getByLabel('تاریخ اسلاگ (شمسی)',{exact:true}).fill('1405/08/25');await p.getByRole('button',{name:'اعمال تاریخ',exact:true}).click();await p.locator('input[value="blogger20825"]').waitFor();assert.equal(await p.getByLabel('اسلاگ نهایی (قابل ویرایش)',{exact:true}).nth(0).inputValue(),'blogger10825');await p.getByLabel('تاریخ اسلاگ (شمسی)',{exact:true}).fill('1405/08/17');await p.getByRole('button',{name:'اعمال تاریخ',exact:true}).click();await p.locator('input[value="blogger20817"]').waitFor();
+ if(restoreMode){
+ console.log('Checking reload');await p.reload();await p.getByRole('button',{name:'ساخت گروهی',exact:true}).click();await p.getByLabel('تایپ',{exact:true}).nth(1).waitFor();assert.equal(await p.getByLabel('تایپ',{exact:true}).nth(1).inputValue(),'880002');assert.equal(await p.getByLabel('متن درخواست 2',{exact:true}).inputValue(),'درخواست 2');
+ console.log('Checking history restore');await p.getByRole('button',{name:'تاریخچه عملیات',exact:true}).click();await p.getByRole('button',{name:'انتخاب سفارش‌های آماده',exact:true}).click();await p.getByRole('button',{name:'بازگرداندن به ساخت گروهی (2)',exact:true}).click();await p.locator('.bannerPicker img[src^="/api/landing/jobs/"]').nth(1).waitFor();await p.getByLabel('تایپ',{exact:true}).nth(0).fill('880001');assert.equal(await p.locator('.bannerPicker img:visible').count(),2);assert.equal(uploads,2);
+ }
  if(reuseTypeMode)await p.getByLabel('این تایپ قبلاً استفاده شده؛ استفاده دوباره از همین شماره را تأیید می‌کنم.',{exact:true}).check();
  assert.equal(await p.getByText('شماره تایپ بعدی',{exact:true}).count(),0);
  const start=p.getByRole('button',{name:'شروع ساخت واقعی به‌ترتیب (2 درخواست)',exact:true});assert.equal(await start.isEnabled(),false);

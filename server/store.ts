@@ -38,7 +38,15 @@ if(!db.prepare('SELECT id FROM settings').get()){
   db.prepare('UPDATE settings SET value=? WHERE id=1').run(JSON.stringify(current));
  }
  if(!current.typeRanges){current.typeRanges=defaults.typeRanges;db.prepare('UPDATE settings SET value=? WHERE id=1').run(JSON.stringify(current));}
+ if((current.settingsVersion||0)<6){
+  current.supervisors.rezaei={...current.supervisors.rezaei,...defaults.supervisors.rezaei};
+  current.supervisors.doosti={...current.supervisors.doosti,...defaults.supervisors.doosti};
+  current.settingsVersion=6;
+  db.prepare('UPDATE settings SET value=? WHERE id=1').run(JSON.stringify(current));
+ }
 }
+{const c=JSON.parse((db.prepare('SELECT value FROM settings WHERE id=1').get() as any).value);if((c.settingsVersion||0)<8){c.supervisors.rezaei.group=defaults.supervisors.rezaei.group;c.settingsVersion=8;db.prepare('UPDATE settings SET value=? WHERE id=1').run(JSON.stringify(c));}}
+{const c=JSON.parse((db.prepare('SELECT value FROM settings WHERE id=1').get() as any).value);if((c.settingsVersion||0)<9){c.supervisors.gheshmi={...c.supervisors.gheshmi,...defaults.supervisors.gheshmi};c.settingsVersion=9;db.prepare('UPDATE settings SET value=? WHERE id=1').run(JSON.stringify(c));}}
 // Interrupted operations retain the lease: no automatic resubmission after a crash.
 db.prepare("UPDATE jobs SET status='uncertain', error='برنامه حین عملیات بسته شد؛ پیش از ادامه نتیجه را در سایت بررسی کنید.' WHERE status IN ('running','uploading','checking','confirming')").run();
 export const config=()=>JSON.parse((db.prepare('SELECT value FROM settings WHERE id=1').get() as any).value);

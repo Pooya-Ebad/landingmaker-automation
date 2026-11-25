@@ -24,11 +24,13 @@ export function prepareRetry(id:string,changes:any){return transaction(()=>{
 export function prepare(id:string,changes:any,expectedType?:number,inTransaction=false){const work=()=>{
  const j=job(id);if(!['review','ready'].includes(j.status))throw new Error('این سفارش قابل ویرایش یا اجرای دوباره نیست.');
  const c=config();validateConfig(c);
- const allowed=['date','blogger','writer','idea','subject','scenarioName','stories','style','company','category','supervisor','tokenCompany','tokenId','builder','type','slug','title'];
+ const allowed=['date','blogger','writer','idea','subject','scenarioName','stories','style','company','category','supervisor','tokenCompany','tokenId','builder','type','slug','slugDate','title'];
  const d={...j.data};for(const k of allowed)if(changes[k]!==undefined)d[k]=changes[k];
  if(!c.supervisors[d.supervisor]||!c.companies[d.company]||!c.landingPages[d.category])throw new Error('سرپرست، شرکت و دسته‌بندی را تکمیل کنید.');
  const tokenCompany=d.tokenCompany||d.company;const token=selectedToken(c,d.supervisor,tokenCompany,d.tokenId);if(!c.companies[tokenCompany]||!token)throw new Error('توکن مجاز این سرپرست موجود نیست.');
- if(!d.blogger?.trim()||!d.date?.trim()||!d.uploadId||!/^[a-z0-9]+$/.test(d.slug||''))throw new Error('نام بلاگر، تاریخ، تصویر و اسلاگ لاتین معتبر لازم است.');
+ if(!d.blogger?.trim())throw new Error('نام بلاگر را تکمیل کنید.');
+ if(!d.uploadId)throw new Error('تصویر بنر را بارگذاری کنید.');
+ if(!/^[a-z0-9]+$/.test(d.slug||''))throw new Error('اسلاگ باید فقط شامل حروف کوچک انگلیسی و اعداد لاتین باشد.');
  const expected=expectedType??nextType(d.supervisor);if(!expected)throw new Error('تایپ شروع این سرپرست را در تنظیمات وارد کنید.');
  d.type=Number(d.type);if(!Number.isSafeInteger(d.type)||d.type!==expected)throw new Error('تایپ این سرپرست تغییر کرده است؛ پیش‌نمایش را به‌روز کنید.');
  const used=typeStatus(d.supervisor,d.type).used;

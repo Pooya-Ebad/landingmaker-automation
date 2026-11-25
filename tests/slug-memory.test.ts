@@ -11,6 +11,11 @@ test('slug spelling memory normalizes blogger names, persists only the name and 
  assert.equal(m.suggestSlug('پوریا عزیزی',c,day).slug,'pouriaazizi0817');
  m.rememberSlug('پوریا عزیزی','pouryaazizi0817','1405/08/17');
  assert.equal(m.suggestSlug('  پوريا   عزيزي ',c,day).slug,'pouryaazizi0817');
+ const selected=m.suggestSlug('پوریا عزیزی',c,day,'۱۴۰۵/۰۸/۲۵');
+ assert.equal(selected.slug,'pouryaazizi0825');assert.equal(selected.slugDate,'1405/08/25');
+ assert.ok(selected.slugAnalysis.alternatives.every(v=>v.endsWith('0825')));
+ assert.throws(()=>m.suggestSlug('پوریا عزیزی',c,day,'1405/13/01'));
+ assert.throws(()=>m.suggestSlug('پوریا عزیزی',c,day,'1405/08/31'));
  assert.equal(m.suggestSlug('پوریا عزیزی',c,new Date('2026-11-09T09:00:00Z')).slug,'pouryaazizi0818');
  assert.equal(m.suggestSlug('پوریا نوری',c,day).remembered,false);
  assert.throws(()=>m.rememberSlug('پوریا عزیزی','pouryaazizi0816','1405/08/17'));

@@ -13,10 +13,13 @@ test('batch preflight is atomic; sequential successes consume types; failure/unc
  const first=draft(),bad=draft(),before=s.nextType('doosti');
  assert.throws(()=>b.startBatch([{id:first.id,data:{}},{id:bad.id,data:{company:''}}],{doosti:before},true));
  assert.equal(s.job(first.id).status,'review');assert.equal(s.nextType('doosti'),before);assert.equal(b.activeBatch(),undefined);
+ assert.throws(()=>b.startBatch([{id:first.id,data:{}},{id:bad.id,data:{slug:'invalid slug'}}],{doosti:before},true),/درخواست 2: اسلاگ/);
+ assert.equal(s.job(first.id).status,'review');assert.equal(s.nextType('doosti'),before);
  assert.throws(()=>b.startBatch([{id:first.id,data:{}},{id:bad.id,data:{slug:first.data.slug}}],{doosti:before},true));
  assert.equal(s.job(first.id).status,'review');
  assert.throws(()=>b.startBatch([{id:first.id,data:{}}],{doosti:before},false));
- const queue=b.startBatch([{id:first.id,data:{}},{id:bad.id,data:{}}],{doosti:before+10},true);
+ const queue=b.startBatch([{id:first.id,data:{date:''}},{id:bad.id,data:{}}],{doosti:before+10},true);
+ assert.equal(queue.jobs[0].data.date,'');
  assert.equal(queue.jobs[1].data.type,before+11);assert.ok(!JSON.stringify(queue).includes('fixture-private-token'));assert.equal(queue.jobs[0].data.file,undefined);
  assert.throws(()=>b.startBatch([{id:draft().id,data:{}}],{doosti:before+20},true));
  const events:string[]=[];

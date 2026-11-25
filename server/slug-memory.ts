@@ -4,9 +4,11 @@ import {analyzeName,canonicalGivenKey} from './name-transliterator';
 db.exec('CREATE TABLE IF NOT EXISTS slug_memory(name TEXT PRIMARY KEY,blogger TEXT NOT NULL,latin TEXT NOT NULL,updated TEXT NOT NULL)');
 db.exec('CREATE TABLE IF NOT EXISTS given_name_memory(name TEXT PRIMARY KEY,latin TEXT NOT NULL,updated TEXT NOT NULL)');
 const nameKey=(name:string)=>normalize(name).replace(/[\u064b-\u065f\u0670\u0640]/g,'').toLowerCase();
-export function suggestSlug(blogger:string,c:any,now=new Date()){
+export function suggestSlug(blogger:string,c:any,now=new Date(),selectedDate?:string){
  const memory=db.prepare('SELECT latin FROM slug_memory WHERE name=?').get(nameKey(blogger)) as any;
- const slugDate=todayJalali(now);const suffix=makeSlug('x',slugDate,c).slice(1);
+ const slugDate=selectedDate?normalize(selectedDate).replace(/-/g,'/'):todayJalali(now);const probe=makeSlug('x',slugDate,c);
+ if(!probe)throw new Error('تاریخ اسلاگ را به صورت شمسی، مانند 1405/08/20 وارد کنید.');
+ const suffix=probe.slice(1);
  const learned=Object.fromEntries(db.prepare('SELECT name,latin FROM given_name_memory').all().map((r:any)=>[r.name,r.latin]));
  const analysis=analyzeName(blogger,c.slug.dictionary,learned);
  const base=memory?memory.latin:analysis.latin;
